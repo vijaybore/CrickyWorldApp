@@ -8,14 +8,13 @@ import React, { useState } from 'react'
 import {
   View,
   Text,
-  ScrollView,
-  TouchableOpacity,
+  ScrollView ,
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  Pressable ,
   RefreshControl,
-  StatusBar,
-} from 'react-native'
+  StatusBar} from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -27,8 +26,7 @@ import type {
   BowlingStats,
   Innings,
   Ball,
-  Match,
-} from '../types'
+  Match} from '../types'
 
 type Route = RouteProp<RootStackParamList, 'MatchDetails'>
 type Nav   = NativeStackNavigationProp<RootStackParamList>
@@ -39,8 +37,7 @@ const T = {
   gold: '#f5c842', red: '#ff4444', green: '#22d983',
   purple: '#b48aff', sky: '#38c9f8', orange: '#ff8f3c',
   text: '#f0ece0', text2: '#a0998c', muted: '#404040',
-  border: 'rgba(255,255,255,0.07)',
-}
+  border: 'rgba(255,255,255,0.07)'}
 
 const strikeRate = (runs: number, balls: number): string =>
   balls > 0 ? ((runs / balls) * 100).toFixed(1) : '-'
@@ -69,8 +66,7 @@ function BallDot({ ball, size = 28 }: { ball: Ball; size?: number }) {
 }
 const dotStyles = StyleSheet.create({
   dot: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
-  label: { fontWeight: '800' },
-})
+  label: { fontWeight: '800' }})
 
 // ── Summary Tab ───────────────────────────────────────────────────────────────
 function SummaryTab({ match }: { match: Match }) {
@@ -157,7 +153,7 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
 
   return (
     <View style={scStyles.container}>
-      <TouchableOpacity onPress={() => setExpanded(e => !e)} style={scStyles.header}>
+      <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setExpanded(e => !e)} style={scStyles.header}>
         <View>
           <Text style={scStyles.innLabel}>{idx === 0 ? '1ST INNINGS' : '2ND INNINGS'}</Text>
           <Text style={scStyles.teamName}>{inn.battingTeam}</Text>
@@ -166,7 +162,7 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
           <Text style={scStyles.totalScore}>{inn.runs}/{inn.wickets}</Text>
           <Text style={scStyles.totalOvers}>({fmtOvers(inn.balls)} ov)</Text>
         </View>
-      </TouchableOpacity>
+      </Pressable>
 
       {expanded && (
         <>
@@ -257,20 +253,20 @@ function CommentaryTab({ match }: { match: Match }) {
 
   const data = [...overs].reverse().map((overBalls, ri) => ({
     overNum: overs.length - 1 - ri,
-    balls: overBalls,
-  }))
+    balls: overBalls}))
 
   return (
     <>
       {innings.length > 1 && (
         <View style={comStyles.innSwitcher}>
           {innings.map((inn, i) => (
-            <TouchableOpacity
-              key={i} onPress={() => setActiveInn(i)}
+            <Pressable
+
+              android_ripple={{ color: "rgba(255,255,255,0.12)" }}              key={i} onPress={() => setActiveInn(i)}
               style={[comStyles.innTab, activeInn === i && comStyles.innTabActive]}
             >
               <Text style={[comStyles.innTabText, activeInn === i && { color: T.gold }]}>{inn.battingTeam}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
       )}
@@ -329,8 +325,7 @@ export default function MatchDetailsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('Summary')
 
   const { match, loading, error, refresh, refreshing } = useLiveScores({
-    matchId: id, pollInterval: 15000,
-  })
+    matchId: id, pollInterval: 15000})
 
   return (
     <View style={styles.root}>
@@ -338,9 +333,9 @@ export default function MatchDetailsScreen() {
 
       {/* Top Nav */}
       <View style={styles.topNav}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.navTitle} numberOfLines={1}>
           {match ? `${match.team1} vs ${match.team2}` : 'Match Details'}
         </Text>
@@ -350,9 +345,9 @@ export default function MatchDetailsScreen() {
             <FavoriteToggle team={match.team2} size={16} />
           </View>
         )}
-        <TouchableOpacity onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={refresh} disabled={refreshing} style={styles.refreshBtn}>
           <Text style={[styles.refreshBtnText, refreshing && { color: '#444' }]}>↻</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {loading && !match ? (
@@ -362,9 +357,9 @@ export default function MatchDetailsScreen() {
       ) : error && !match ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}>
           <Text style={{ color: T.text2, fontWeight: '700', fontSize: 15 }}>⚠️ {error}</Text>
-          <TouchableOpacity onPress={refresh} style={styles.retryBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={refresh} style={styles.retryBtn}>
             <Text style={{ color: T.gold, fontWeight: '700' }}>Retry</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : match ? (
         <>
@@ -402,10 +397,10 @@ export default function MatchDetailsScreen() {
           {/* Tab bar */}
           <View style={styles.tabBar}>
             {(['Summary', 'Scorecard', 'Commentary'] as TabType[]).map(tab => (
-              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={styles.tabBtn}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={tab} onPress={() => setActiveTab(tab)} style={styles.tabBtn}>
                 <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnActive]}>{tab}</Text>
                 {activeTab === tab && <View style={styles.tabIndicator} />}
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
 
@@ -427,41 +422,34 @@ const styles = StyleSheet.create({
   topNav: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 14, paddingTop: 50, paddingBottom: 12,
-    backgroundColor: T.bg, borderBottomWidth: 1, borderBottomColor: T.border,
-  },
+    backgroundColor: T.bg, borderBottomWidth: 1, borderBottomColor: T.border},
   backBtn: {
     width: 32, height: 32, borderRadius: 9,
     backgroundColor: T.card, borderWidth: 1, borderColor: T.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
+    alignItems: 'center', justifyContent: 'center'},
   backBtnText: { color: T.text2, fontSize: 18, fontWeight: '600' },
   navTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: T.text, letterSpacing: 0.5 },
   refreshBtn: {
     width: 32, height: 32, borderRadius: 9,
     backgroundColor: T.card, borderWidth: 1, borderColor: T.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
+    alignItems: 'center', justifyContent: 'center'},
   refreshBtnText: { color: T.gold, fontSize: 18, fontWeight: '700' },
   retryBtn: {
     marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10,
-    backgroundColor: T.card, borderWidth: 1, borderColor: T.border,
-  },
+    backgroundColor: T.card, borderWidth: 1, borderColor: T.border},
   // Score header
   scoreHeader: {
     backgroundColor: '#1a1000',
-    padding: 16, borderBottomWidth: 1, borderBottomColor: T.border,
-  },
+    padding: 16, borderBottomWidth: 1, borderBottomColor: T.border},
   liveBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(34,217,131,0.12)', borderWidth: 1,
     borderColor: 'rgba(34,217,131,0.25)', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3,
-  },
+    paddingHorizontal: 10, paddingVertical: 3},
   completedBadge: {
     backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)', borderRadius: 20,
-    paddingHorizontal: 10, paddingVertical: 3,
-  },
+    paddingHorizontal: 10, paddingVertical: 3},
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.green },
   badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
   overText: { fontSize: 11, color: T.text2 },
@@ -474,8 +462,7 @@ const styles = StyleSheet.create({
   tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', position: 'relative' },
   tabBtnText: { fontSize: 12, fontWeight: '700', color: T.muted, letterSpacing: 0.8 },
   tabBtnActive: { color: T.gold },
-  tabIndicator: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2, backgroundColor: T.gold, borderRadius: 1 },
-})
+  tabIndicator: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2, backgroundColor: T.gold, borderRadius: 1 }})
 
 // Tab sub-styles
 const tabStyles = StyleSheet.create({
@@ -488,26 +475,22 @@ const tabStyles = StyleSheet.create({
   statRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 9,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
-  },
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)'},
   statLabel: { fontSize: 12, color: T.text2, fontWeight: '600' },
   statValue: { fontSize: 13, fontWeight: '700', color: T.text, fontFamily: 'monospace' },
   perfCard: {
     margin: 14, padding: 14, borderRadius: 12,
-    backgroundColor: T.card, borderWidth: 1, borderColor: T.gold + '33',
-  },
+    backgroundColor: T.card, borderWidth: 1, borderColor: T.gold + '33'},
   perfRole: { fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
   perfName: { fontSize: 14, fontWeight: '700', color: T.text, marginBottom: 2 },
-  perfValue: { fontSize: 12, color: T.text2 },
-})
+  perfValue: { fontSize: 12, color: T.text2 }})
 
 const scStyles = StyleSheet.create({
   container: { marginBottom: 2 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: 12, backgroundColor: '#1a1000',
-    borderBottomWidth: 1, borderBottomColor: T.border,
-  },
+    borderBottomWidth: 1, borderBottomColor: T.border},
   innLabel: { fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 2, marginBottom: 2 },
   teamName: { fontSize: 16, fontWeight: '700', color: T.text, letterSpacing: 0.5 },
   totalScore: { fontSize: 24, fontWeight: '800', color: T.gold, fontFamily: 'monospace' },
@@ -515,20 +498,16 @@ const scStyles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row', backgroundColor: T.card,
     paddingHorizontal: 10, paddingVertical: 7,
-    borderBottomWidth: 1, borderBottomColor: T.border,
-  },
+    borderBottomWidth: 1, borderBottomColor: T.border},
   th: { flex: 1, textAlign: 'right', fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 0.8 },
   row: {
     flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 9,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)',
-  },
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)'},
   td: { flex: 1, textAlign: 'right', fontSize: 12, color: T.text2, fontFamily: 'monospace' },
   totalRow: {
     flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 9,
     backgroundColor: 'rgba(245,200,66,0.08)',
-    borderTopWidth: 1, borderTopColor: T.gold + '33',
-  },
-})
+    borderTopWidth: 1, borderTopColor: T.gold + '33'}})
 
 const comStyles = StyleSheet.create({
   innSwitcher: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: T.border },
@@ -538,15 +517,12 @@ const comStyles = StyleSheet.create({
   overBlock: { borderBottomWidth: 1, borderBottomColor: T.border },
   overHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: 8, paddingHorizontal: 14, backgroundColor: T.card,
-  },
+    padding: 8, paddingHorizontal: 14, backgroundColor: T.card},
   overLabel: { fontSize: 12, color: T.gold, fontWeight: '800' },
   overSummary: { fontSize: 11, color: T.text2, fontFamily: 'monospace' },
   ballRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.03)',
-  },
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.03)'},
   ballDesc: { fontSize: 12, color: T.text, lineHeight: 18 },
-  bowlerName: { fontSize: 11, color: T.muted, marginTop: 1 },
-})
+  bowlerName: { fontSize: 11, color: T.muted, marginTop: 1 }})

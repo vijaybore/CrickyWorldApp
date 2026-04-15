@@ -7,10 +7,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View, Text, TextInput , Pressable, FlatList,
   ScrollView, Modal, StyleSheet, ActivityIndicator,
-  Alert, Image, StatusBar, Platform,
-} from 'react-native'
+  Alert, Image, StatusBar, Platform} from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -49,8 +48,7 @@ function derive(p: Player) {
     bowlAvg: wk > 0 ? (rc/wk).toFixed(1) : '—',
     bowlSR:  wk > 0 ? (bb/wk).toFixed(1) : '—',
     bestFig: (p.bestBowlingW ?? 0) > 0 ? `${p.bestBowlingW}/${p.bestBowlingR}` : '—',
-    overs:   fmtOv(bb),
-  }
+    overs:   fmtOv(bb)}
 }
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
@@ -82,8 +80,7 @@ function StatRow({ label, value, color='#f0f0f0', isAlt=false }: { label:string;
 const srStyles = StyleSheet.create({
   row: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:11, paddingHorizontal:14, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.04)' },
   label: { fontSize:12, color:'#888', fontWeight:'700' },
-  value: { fontSize:17, fontWeight:'700', fontVariant:['tabular-nums'] },
-})
+  value: { fontSize:17, fontWeight:'700', fontVariant:['tabular-nums'] }})
 
 // ── Add Player Form ───────────────────────────────────────────────────────────
 function AddForm({ onCreated, onCancel }: { onCreated:(p:Player)=>void; onCancel:()=>void }) {
@@ -97,8 +94,7 @@ function AddForm({ onCreated, onCancel }: { onCreated:(p:Player)=>void; onCancel
       const token = await getToken()
       const res = await fetch(apiUrl('/api/players'), {
         method:'POST', headers:{ 'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{}) },
-        body: JSON.stringify(form),
-      })
+        body: JSON.stringify(form)})
       if (!res.ok) throw new Error('Failed')
       const data = await res.json() as Player
       onCreated(data)
@@ -121,9 +117,9 @@ function AddForm({ onCreated, onCancel }: { onCreated:(p:Player)=>void; onCancel
       <Text style={addStyles.lbl}>ROLE</Text>
       <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:12 }}>
         {ROLES.map(r=>(
-          <TouchableOpacity key={r} onPress={()=>setForm(f=>({...f,role:r}))} style={[addStyles.roleBtn, form.role===r && { borderColor:ROLE_COLOR[r], backgroundColor:ROLE_COLOR[r]+'22' }]}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={r} onPress={()=>setForm(f=>({...f,role:r}))} style={[addStyles.roleBtn, form.role===r && { borderColor:ROLE_COLOR[r], backgroundColor:ROLE_COLOR[r]+'22' }]}>
             <Text style={[addStyles.roleTxt, form.role===r && { color:ROLE_COLOR[r] }]}>{ROLE_ICON[r]} {ROLE_LABEL[r]}</Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -136,12 +132,12 @@ function AddForm({ onCreated, onCancel }: { onCreated:(p:Player)=>void; onCancel
         placeholder="e.g. Right-arm medium" placeholderTextColor="#444" />
 
       <View style={{ flexDirection:'row', gap:8, marginTop:6 }}>
-        <TouchableOpacity onPress={onCancel} style={[addStyles.btn, addStyles.cancelBtn]}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onCancel} style={[addStyles.btn, addStyles.cancelBtn]}>
           <Text style={{ color:'#888', fontWeight:'700', fontSize:13 }}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={save} disabled={!form.name.trim()||saving} style={[addStyles.btn, addStyles.saveBtn, (!form.name.trim()||saving)&&{backgroundColor:'#222'}]}>
+        </Pressable>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={save} disabled={!form.name.trim()||saving} style={[addStyles.btn, addStyles.saveBtn, (!form.name.trim()||saving)&&{backgroundColor:'#222'}]}>
           {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color:'#fff', fontWeight:'800', fontSize:13 }}>+ Add Player</Text>}
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </View>
   )
@@ -155,8 +151,7 @@ const addStyles = StyleSheet.create({
   roleTxt: { color:'#666', fontSize:11, fontWeight:'800' },
   btn: { flex:1, padding:12, borderRadius:10, alignItems:'center', justifyContent:'center' },
   cancelBtn: { backgroundColor:'#1a1a1a', borderWidth:1, borderColor:'#2a2a2a' },
-  saveBtn: { flex:2, backgroundColor:'#cc0000' },
-})
+  saveBtn: { flex:2, backgroundColor:'#cc0000' }})
 
 // ── Profile Sheet ─────────────────────────────────────────────────────────────
 function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player; onClose:()=>void; onUpdated:(p:Player)=>void; onDeleted:(id:string)=>void }) {
@@ -170,8 +165,7 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
     try {
       const token = await getToken()
       const res = await fetch(apiUrl(`/api/players/${player._id}/sync`), {
-        method:'POST', headers:token?{Authorization:`Bearer ${token}`}:{},
-      })
+        method:'POST', headers:token?{Authorization:`Bearer ${token}`}:{}})
       if (!res.ok) throw new Error()
       const data = await res.json() as Player
       onUpdated(data)
@@ -223,12 +217,12 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
       <View style={ps.topBar}>
         <Text style={ps.topBarTitle}>Player Profile</Text>
         <View style={{ flexDirection:'row', gap:8 }}>
-          <TouchableOpacity onPress={sync} disabled={syncing} style={ps.syncBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={sync} disabled={syncing} style={ps.syncBtn}>
             <Text style={ps.syncTxt}>{syncing ? '…' : '↻ Sync'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={ps.closeBtn}>
+          </Pressable>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onClose} style={ps.closeBtn}>
             <Text style={{ color:'#888', fontSize:15, fontWeight:'700' }}>✕</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
@@ -262,11 +256,11 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
         {/* Tabs */}
         <View style={ps.tabRow}>
           {(['batting','bowling'] as const).map(t=>(
-            <TouchableOpacity key={t} onPress={()=>setTab(t)} style={[ps.tab, tab===t&&ps.tabActive]}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={t} onPress={()=>setTab(t)} style={[ps.tab, tab===t&&ps.tabActive]}>
               <Text style={[ps.tabTxt, tab===t&&{ color:t==='batting'?'#ff4444':'#c084fc' }]}>
                 {t==='batting'?'🏏 Batting':'🎳 Bowling'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
 
@@ -280,9 +274,9 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
         </Text>
 
         {/* Delete */}
-        <TouchableOpacity onPress={del} style={ps.deleteBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={del} style={ps.deleteBtn}>
           <Text style={ps.deleteTxt}>🗑 Delete Player</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </View>
   )
@@ -309,8 +303,7 @@ const ps = StyleSheet.create({
   tabActive: { backgroundColor:'rgba(255,68,68,0.1)', borderColor:'rgba(255,68,68,0.3)' },
   tabTxt: { color:'#666', fontSize:12, fontWeight:'800' },
   deleteBtn: { marginHorizontal:14, marginBottom:32, padding:12, borderRadius:11, borderWidth:1, borderColor:'rgba(255,68,68,0.2)', alignItems:'center' },
-  deleteTxt: { color:'#ff4444', fontWeight:'800', fontSize:13 },
-})
+  deleteTxt: { color:'#ff4444', fontWeight:'800', fontSize:13 }})
 
 // ── Player Card ───────────────────────────────────────────────────────────────
 function PlayerCard({ player, onPress }: { player:Player; onPress:()=>void }) {
@@ -319,7 +312,7 @@ function PlayerCard({ player, onPress }: { player:Player; onPress:()=>void }) {
   const hasBowl = (player.totalWickets??0) > 0 || (player.totalBallsBowled??0) > 0
   const rc = ROLE_COLOR[player.role] || '#555'
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={pcStyles.card}>
+    <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onPress} style={pcStyles.card}>
       <Avatar player={player} size={48} />
       <View style={{ flex:1, marginLeft:12 }}>
         <View style={{ flexDirection:'row', alignItems:'baseline', gap:6, marginBottom:4 }}>
@@ -338,7 +331,7 @@ function PlayerCard({ player, onPress }: { player:Player; onPress:()=>void }) {
         {hasBowl&&<View style={{ alignItems:'center' }}><Text style={[pcStyles.stat,{color:'#c084fc'}]}>{player.totalWickets}</Text><Text style={pcStyles.statLbl}>WKTS</Text></View>}
         <Text style={{ color:'#2e2e2e', fontSize:18 }}>›</Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   )
 }
 const pcStyles = StyleSheet.create({
@@ -348,8 +341,7 @@ const pcStyles = StyleSheet.create({
   roleTag: { fontSize:10, fontWeight:'800' },
   meta: { fontSize:10, color:'#444' },
   stat: { fontSize:18, fontWeight:'700', lineHeight:20 },
-  statLbl: { fontSize:9, color:'#444', fontWeight:'800' },
-})
+  statLbl: { fontSize:9, color:'#444', fontWeight:'800' }})
 
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function PlayersScreen() {
@@ -391,14 +383,14 @@ export default function PlayersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Text style={styles.backTxt}>←</Text>
-          </TouchableOpacity>
+          </Pressable>
           <Text style={styles.title}>👤 Players</Text>
-          <TouchableOpacity onPress={() => setAdding(a => !a)}
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setAdding(a => !a)}
             style={[styles.addBtn, adding && { backgroundColor:'#1a1a1a', borderWidth:1, borderColor:'#2a2a2a' }]}>
             <Text style={[styles.addBtnTxt, adding && { color:'#666' }]}>{adding ? '✕ Cancel' : '+ Add'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Summary */}
@@ -420,17 +412,17 @@ export default function PlayersScreen() {
         {/* Filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal:12, paddingBottom:10 }} contentContainerStyle={{ gap:6 }}>
           {[{key:'all',label:'All'}, ...ROLES.map(r=>({key:r,label:`${ROLE_ICON[r]} ${ROLE_LABEL[r]}`}))].map(r=>(
-            <TouchableOpacity key={r.key} onPress={()=>setRoleF(r.key as 'all'|PlayerRole)}
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={r.key} onPress={()=>setRoleF(r.key as 'all'|PlayerRole)}
               style={[styles.chip, roleF===r.key&&styles.chipActive]}>
               <Text style={[styles.chipTxt, roleF===r.key&&{color:'#ff4444'}]}>{r.label}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
           <View style={{ width:1, backgroundColor:'#2a2a2a', marginHorizontal:4 }} />
           {SORT_OPTIONS.map(s=>(
-            <TouchableOpacity key={s.key} onPress={()=>setSortBy(s.key)}
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={s.key} onPress={()=>setSortBy(s.key)}
               style={[styles.chip, sortBy===s.key&&{backgroundColor:'rgba(250,204,21,0.12)',borderColor:'rgba(250,204,21,0.3)'}]}>
               <Text style={[styles.chipTxt, sortBy===s.key&&{color:'#facc15'}]}>{s.label}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </ScrollView>
       </View>
@@ -457,7 +449,7 @@ export default function PlayersScreen() {
 
       {/* Profile Modal */}
       <Modal visible={selected !== null} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setSelected(null)} />
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={styles.overlay} onPress={() => setSelected(null)} />
         {selected && (
           <View style={styles.sheetOuter}>
             <ProfileSheet
@@ -492,5 +484,4 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor:'rgba(255,68,68,0.12)', borderColor:'rgba(255,68,68,0.3)' },
   chipTxt: { color:'#666', fontSize:12, fontWeight:'800' },
   overlay: { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.7)' },
-  sheetOuter: { position:'absolute', bottom:0, left:0, right:0 },
-})
+  sheetOuter: { position:'absolute', bottom:0, left:0, right:0 }})

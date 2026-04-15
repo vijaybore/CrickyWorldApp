@@ -11,14 +11,14 @@ import LoginScreen         from '../screens/LoginScreen'
 import RegisterScreen      from '../screens/RegisterScreen'
 import NewMatchScreen      from '../screens/NewMatchScreen'
 import OpenMatchScreen     from '../screens/OpenMatchScreen'
-import MatchDetailsScreen  from '../screens/MatchDetailsScreen'
-import MatchReportScreen   from '../screens/MatchReportScreen'
 import PlayersScreen       from '../screens/PlayersScreen'
-import ManagePlayersScreen  from '../screens/ManagePlayersScreen'
-import RecordsScreen        from '../screens/RecordsScreen'
-import SettingsScreen       from '../screens/SettingsScreen'
-import ScoringScreen        from '../screens/ScoringScreen'
-import TournamentsScreen    from '../screens/TournamentsScreen'
+import ManagePlayersScreen from '../screens/ManagePlayersScreen'
+import MatchDetailsScreen  from '../screens/MatchDetailsScreen'
+import MatchreportScreen   from '../screens/MatchreportScreen'
+import RecordsScreen       from '../screens/RecordsScreen'
+import SettingsScreen      from '../screens/SettingsScreen'
+import ScoringScreen       from '../screens/ScoringScreen'
+import TournamentsScreen   from '../screens/TournamentsScreen'
 
 // ── Bottom tab param list ─────────────────────────────────────────────────────
 type TabList = {
@@ -105,7 +105,7 @@ export function RootNavigator() {
         options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="MatchDetails"  component={MatchDetailsScreen}
         options={{ animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="MatchReport"   component={MatchReportScreen} />
+      <Stack.Screen name="MatchReport"   component={MatchreportScreen} />
 
       {/* Players */}
       <Stack.Screen name="Players"       component={PlayersScreen} />

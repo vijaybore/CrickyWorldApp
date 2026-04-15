@@ -7,10 +7,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, Modal,
+  View, Text, FlatList , Pressable, Modal,
   ScrollView, StyleSheet, ActivityIndicator,
-  StatusBar, Platform, Image,
-} from 'react-native'
+  StatusBar, Platform, Image} from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -117,9 +116,9 @@ function PlayerDetail({ p, onClose }: { p:PlayerStat; onClose:()=>void }) {
           <Text style={pdStyles.name}>{p.name}</Text>
           <Text style={pdStyles.meta}>{p.matches} {p.matches===1?'match':'matches'}</Text>
         </View>
-        <TouchableOpacity onPress={onClose} style={pdStyles.closeBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onClose} style={pdStyles.closeBtn}>
           <Text style={{ color:'#888', fontSize:16, fontWeight:'700' }}>✕</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Summary strip */}
@@ -155,8 +154,7 @@ const pdStyles = StyleSheet.create({
   sec: { fontSize:10, fontWeight:'800', letterSpacing:2, padding:12, paddingHorizontal:14, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.05)' },
   row: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:9, paddingHorizontal:14, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.04)' },
   lbl: { fontSize:12, color:'#777', fontWeight:'700' },
-  val: { fontFamily:'monospace', fontSize:16, fontWeight:'700' },
-})
+  val: { fontFamily:'monospace', fontSize:16, fontWeight:'700' }})
 
 // ── Category Leaderboard ──────────────────────────────────────────────────────
 function CategoryLeaderboard({ title, icon, players, valueKey, valueFn, valueLabel, asc=false, onTap, onBack }: any) {
@@ -173,9 +171,9 @@ function CategoryLeaderboard({ title, icon, players, valueKey, valueFn, valueLab
   return (
     <View style={{ flex:1 }}>
       <View style={lbStyles.header}>
-        <TouchableOpacity onPress={onBack} style={lbStyles.backBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onBack} style={lbStyles.backBtn}>
           <Text style={{ color:'#aaa', fontSize:18, fontWeight:'600' }}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={lbStyles.title}>{icon} {title}</Text>
       </View>
       <FlatList
@@ -191,7 +189,7 @@ function CategoryLeaderboard({ title, icon, players, valueKey, valueFn, valueLab
         renderItem={({ item:p, index:i }) => {
           const rawVal=valueFn?valueFn(p):p[valueKey]
           return (
-            <TouchableOpacity onPress={()=>onTap(p)} style={[lbStyles.row, i===0&&{ backgroundColor:'rgba(255,68,68,0.04)' }]}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={()=>onTap(p)} style={[lbStyles.row, i===0&&{ backgroundColor:'rgba(255,68,68,0.04)' }]}>
               <Text style={[lbStyles.rank, i<3&&{ fontSize:16 }]}>{i<3?MEDALS[i]:i+1}</Text>
               <Avatar p={p} size={38} />
               <View style={{ flex:1, marginLeft:10 }}>
@@ -202,7 +200,7 @@ function CategoryLeaderboard({ title, icon, players, valueKey, valueFn, valueLab
                 <Text style={[lbStyles.val, i===0&&{ color:'#ff4444', fontSize:22 }]}>{rawVal??'—'}</Text>
                 <Text style={lbStyles.valLbl}>{valueLabel}</Text>
               </View>
-            </TouchableOpacity>
+            </Pressable>
           )
         }}
       />
@@ -219,8 +217,7 @@ const lbStyles = StyleSheet.create({
   bar: { height:3, backgroundColor:'#2a2a2a', borderRadius:2, overflow:'hidden' },
   barFill: { height:'100%', backgroundColor:'rgba(255,68,68,0.35)', borderRadius:2 },
   val: { fontFamily:'monospace', fontSize:17, fontWeight:'700', color:'#888' },
-  valLbl: { fontSize:9, color:'#444', fontWeight:'800', letterSpacing:0.5 },
-})
+  valLbl: { fontSize:9, color:'#444', fontWeight:'800', letterSpacing:0.5 }})
 
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function RecordsScreen() {
@@ -292,7 +289,7 @@ export default function RecordsScreen() {
           valueKey={cat.valueKey} valueFn={undefined} valueLabel={cat.valueLabel}
           asc={(cat as any).asc||false} onTap={setSelected} onBack={()=>setCategory(null)} />
         <Modal visible={selected!==null} transparent animationType="slide" onRequestClose={()=>setSelected(null)}>
-          <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={()=>setSelected(null)} />
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={styles.overlay} onPress={()=>setSelected(null)} />
           {selected && <View style={styles.sheetOuter}><PlayerDetail p={selected} onClose={()=>setSelected(null)} /></View>}
         </Modal>
       </View>
@@ -305,9 +302,9 @@ export default function RecordsScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={()=>navigation.goBack()} style={styles.backBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={()=>navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backTxt}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <View style={{ flex:1 }}>
           <Text style={styles.title}>📊 Records</Text>
           <Text style={styles.subtitle}>{matches.length} matches · {stats.length} players</Text>
@@ -333,11 +330,11 @@ export default function RecordsScreen() {
           <View key={heading}>
             <Text style={styles.catHeading}>{heading}</Text>
             {cats.map(cat => (
-              <TouchableOpacity key={cat.label} onPress={()=>setCategory(cat.label)} style={styles.catRow}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={cat.label} onPress={()=>setCategory(cat.label)} style={styles.catRow}>
                 <Text style={styles.catIcon}>{cat.icon}</Text>
                 <Text style={styles.catLabel}>{cat.label}</Text>
                 <Text style={{ color:'#2e2e2e', fontSize:18 }}>›</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </View>
         ))}
@@ -345,7 +342,7 @@ export default function RecordsScreen() {
 
       {/* Player detail modal */}
       <Modal visible={selected!==null} transparent animationType="slide" onRequestClose={()=>setSelected(null)}>
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={()=>setSelected(null)} />
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={styles.overlay} onPress={()=>setSelected(null)} />
         {selected && <View style={styles.sheetOuter}><PlayerDetail p={selected} onClose={()=>setSelected(null)} /></View>}
       </Modal>
     </View>
@@ -368,5 +365,4 @@ const styles = StyleSheet.create({
   catIcon: { fontSize:18, flexShrink:0 },
   catLabel: { flex:1, fontSize:14, fontWeight:'700', color:'#c0c0c0' },
   overlay: { position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.7)' },
-  sheetOuter: { position:'absolute', bottom:0, left:0, right:0 },
-})
+  sheetOuter: { position:'absolute', bottom:0, left:0, right:0 }})

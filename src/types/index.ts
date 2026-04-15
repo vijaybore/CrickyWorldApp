@@ -85,6 +85,7 @@ export interface Innings {
 }
 
 export interface Match {
+  _id:            string
   id:             string
   team1:          string
   team2:          string

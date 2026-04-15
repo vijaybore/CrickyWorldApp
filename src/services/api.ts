@@ -1,28 +1,29 @@
 // src/services/api.ts
-// ─────────────────────────────────────────────────────────────────────────────
-// Change BASE_URL to match your environment:
-//   Android emulator  →  'http://10.0.2.2:5000'
-//   iOS simulator     →  'http://localhost:5000'
-//   Real device       →  'http://YOUR_PC_LAN_IP:5000'  e.g. 192.168.1.5:5000
-//   Production        →  'https://crickyworld.onrender.com'
-// ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_URL = 'http://10.0.2.2:5000'
+const BASE_URL = "https://crickyworld-server.onrender.com"
 
-export const API_URL = BASE_URL
-
-export function apiUrl(path: string): string {
+export function apiUrl(path: string) {
   return `${BASE_URL}${path}`
 }
 
-// Always returns Record<string,string> — prevents HeadersInit TS errors
-export function authHeaders(token: string | null): Record<string, string> {
-  if (token) return { Authorization: `Bearer ${token}` }
-  return {}
+export function authHeaders(token?: string | null) {
+  const headers: any = {}
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
+  return headers
 }
 
-export function jsonHeaders(token: string | null): Record<string, string> {
-  return { 'Content-Type': 'application/json', ...authHeaders(token) }
-}
+export function jsonHeaders(token?: string | null) {
+  const headers: any = {
+    "Content-Type": "application/json",
+  }
 
-export default BASE_URL
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`
+  }
+
+  return headers
+}

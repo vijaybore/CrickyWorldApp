@@ -1,9 +1,8 @@
 // src/screens/RegisterScreen.tsx
 import React, { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar,
-} from 'react-native'
+  View, Text, TextInput , Pressable, ScrollView,
+  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar} from 'react-native'
 import { useNavigation, CommonActions } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -34,8 +33,7 @@ export default function RegisterScreen() {
     try {
       const res = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.mobile, password: form.password }),
-      })
+        body: JSON.stringify({ name: form.name, email: form.mobile, password: form.password })})
       const data = await res.json() as { token?: string; message?: string }
       if (!res.ok) { setError(data.message ?? 'Registration failed.'); return }
       if (data.token) await AsyncStorage.setItem('token', data.token)
@@ -81,9 +79,9 @@ export default function RegisterScreen() {
             placeholder="Min 6 characters" placeholderTextColor="#555"
             value={form.password} onChangeText={v => set('password', v)}
             secureTextEntry={!showPassword} returnKeyType="next" />
-          <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={S.eyeBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setShowPassword(p => !p)} style={S.eyeBtn}>
             <Text style={{ fontSize: 16 }}>{showPassword ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Confirm */}
@@ -93,20 +91,20 @@ export default function RegisterScreen() {
             placeholder="Repeat your password" placeholderTextColor="#555"
             value={form.confirmPassword} onChangeText={v => set('confirmPassword', v)}
             secureTextEntry={!showConfirm} returnKeyType="done" onSubmitEditing={handleSubmit} />
-          <TouchableOpacity onPress={() => setShowConfirm(p => !p)} style={S.eyeBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setShowConfirm(p => !p)} style={S.eyeBtn}>
             <Text style={{ fontSize: 16 }}>{showConfirm ? '🙈' : '👁️'}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {error !== '' && (
           <View style={S.errorBox}><Text style={S.errorTxt}>⚠️ {error}</Text></View>
         )}
 
-        <TouchableOpacity onPress={handleSubmit} disabled={loading} activeOpacity={0.8}
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={handleSubmit} disabled={loading}
           style={[S.submitBtn, loading && { opacity: 0.7 }]}>
           {loading ? <ActivityIndicator color="#fff" size="small" />
                    : <Text style={S.submitTxt}>🏏 CREATE ACCOUNT</Text>}
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Divider */}
         <View style={S.divider}>
@@ -115,9 +113,9 @@ export default function RegisterScreen() {
 
         <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
           <Text style={{ color: '#777', fontSize: 13 }}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.navigate('Login')}>
             <Text style={{ color: '#e63946', fontSize: 13, fontWeight: '600' }}>Sign in here →</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
       </ScrollView>
@@ -145,5 +143,4 @@ const S = StyleSheet.create({
   submitTxt: { color: '#fff', fontSize: 14, fontWeight: '700', letterSpacing: 1 },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 16, gap: 12 },
   divLine: { flex: 1, height: 1, backgroundColor: '#2a2a2a' },
-  divTxt: { color: '#555', fontSize: 12, fontWeight: '600', letterSpacing: 1 },
-})
+  divTxt: { color: '#555', fontSize: 12, fontWeight: '600', letterSpacing: 1 }})

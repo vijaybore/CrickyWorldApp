@@ -7,9 +7,8 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, Share,
-  StyleSheet, ActivityIndicator, StatusBar, Platform,
-} from 'react-native'
+  View, Text, ScrollView , Pressable, Share,
+  StyleSheet, ActivityIndicator, StatusBar, Platform} from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -144,9 +143,9 @@ export default function MatchReportScreen() {
     <View style={[styles.root, { alignItems:'center', justifyContent:'center', padding:40 }]}>
       <Text style={{ fontSize:36, marginBottom:12 }}>⚠️</Text>
       <Text style={{ color:'#f87171', fontWeight:'700', fontSize:15 }}>Match not found</Text>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop:20, padding:12, borderRadius:10, backgroundColor:'#1a1a1a', borderWidth:1, borderColor:'#2a2a2a' }}>
+      <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={{ marginTop:20, padding:12, borderRadius:10, backgroundColor:'#1a1a1a', borderWidth:1, borderColor:'#2a2a2a' }}>
         <Text style={{ color:'#f0f0f0', fontWeight:'700' }}>← Go back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   )
 
@@ -159,13 +158,13 @@ export default function MatchReportScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backTxt}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{match.team1} vs {match.team2}</Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={handleShare} style={styles.shareBtn}>
           <Text style={styles.shareTxt}>📤 Share</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -239,5 +238,4 @@ const styles = StyleSheet.create({
   tableHeader: { backgroundColor:'#151e2e' },
   tableRow: { flexDirection:'row', paddingHorizontal:10, paddingVertical:9, borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.04)' },
   th: { flex:1, textAlign:'right', fontSize:10, color:'#f5c842', fontWeight:'800', letterSpacing:0.8 },
-  td: { flex:1, textAlign:'right', fontSize:12, color:'#94a3b8', fontFamily:'monospace' },
-})
+  td: { flex:1, textAlign:'right', fontSize:12, color:'#94a3b8', fontFamily:'monospace' }})

@@ -9,10 +9,9 @@
 
 import React, { useState, useRef } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, Pressable,
+  View, Text, TextInput, Pressable,
   ScrollView, StyleSheet, Animated, ActivityIndicator,
-  KeyboardAvoidingView, Platform, StatusBar,
-} from 'react-native'
+  KeyboardAvoidingView, Platform, StatusBar} from 'react-native'
 import { useNavigation, CommonActions } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -30,13 +29,15 @@ function ScalePress({ onPress, style, children, disabled }: {
 }) {
   const scale = useRef(new Animated.Value(1)).current
   return (
-    <Pressable
-      onPress={disabled ? undefined : onPress}
-      onPressIn={() => !disabled && Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 60 }).start()}
-      onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()}
-      android_ripple={disabled ? undefined : { color: 'rgba(255,255,255,0.12)' }}
-      style={{ opacity: disabled ? 0.45 : 1 }}
-    >
+   <Pressable
+  onPress={disabled ? undefined : onPress}
+  onPressIn={() => !disabled && Animated.spring(scale, { toValue: 0.93, useNativeDriver: true, speed: 60 }).start()}
+  onPressOut={() => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 60 }).start()}
+  // Keep only the conditional ripple or the static one. 
+  // Since you have a "disabled" state, the conditional one is better:
+  android_ripple={disabled ? undefined : { color: 'rgba(255,255,255,0.12)' }}
+  style={{ opacity: disabled ? 0.45 : 1 }}
+>
       <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
     </Pressable>
   )
@@ -99,15 +100,12 @@ export default function NewMatchScreen() {
           noBallRuns,
           wideRuns,
           team1Players: [],
-          team2Players: [],
-        }),
-      })
+          team2Players: []})})
       const data = await res.json() as { _id?: string; message?: string }
       if (!res.ok) throw new Error(data.message ?? 'Failed to create match')
       navigation.dispatch(CommonActions.reset({
         index: 0,
-        routes: [{ name: 'Home' }, { name: 'Scoring', params: { id: data._id! } }],
-      }))
+        routes: [{ name: 'Home' }, { name: 'Scoring', params: { id: data._id! } }]}))
     } catch (e: unknown) {
       setError((e as Error).message ?? 'Failed to create match')
     } finally {
@@ -233,5 +231,4 @@ const S = StyleSheet.create({
   noteIcon: { fontSize: 18, flexShrink: 0 },
   noteTxt: { fontSize: 12, lineHeight: 18, flex: 1 },
   noteBold: { color: '#c0c0c0', fontWeight: '700' },
-  noteItalic: { color: '#ff6666', fontWeight: '700', fontStyle: 'italic' },
-})
+  noteItalic: { color: '#ff6666', fontWeight: '700', fontStyle: 'italic' }})

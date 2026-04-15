@@ -7,10 +7,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  View, Text, TouchableOpacity, Pressable, ScrollView, TextInput,
+  View, Text , Pressable, ScrollView, TextInput,
   Modal, FlatList, StyleSheet, ActivityIndicator,
-  Alert, StatusBar, Platform,
-} from 'react-native'
+  Alert, StatusBar, Platform} from 'react-native'
 import { useRoute, useNavigation, CommonActions } from '@react-navigation/native'
 import type { RouteProp } from '@react-navigation/native'
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
@@ -31,8 +30,7 @@ const T = {
   orange: '#fb923c', orangeDim: '#431407',
   sky: '#38bdf8', purple: '#c084fc', purpleDim: '#3b0764',
   text: '#f1f5f9', text2: '#cbd5e1', subtext: '#94a3b8', muted: '#475569',
-  faint: '#1e293b',
-}
+  faint: '#1e293b'}
 
 const fmtOv  = (balls: number) => `${Math.floor(balls / 6)}.${balls % 6}`
 const calcCRR = (runs: number, balls: number) => balls === 0 ? '0.0' : (runs / (balls / 6)).toFixed(1)
@@ -63,8 +61,7 @@ function BallDot({ ball, size = 30 }: { ball: Ball; size?: number }) {
 
 // ── Player Picker Modal ───────────────────────────────────────────────────────
 function PlayerPicker({
-  visible, onClose, onSelect, title, accentColor = T.sky, players = [],
-}: {
+  visible, onClose, onSelect, title, accentColor = T.sky, players = []}: {
   visible: boolean; onClose: () => void; onSelect: (name: string) => void
   title: string; accentColor?: string; players: string[]
 }) {
@@ -76,7 +73,7 @@ function PlayerPicker({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={PP.backdrop}><TouchableOpacity style={{ flex: 1 }} onPress={onClose} /></View>
+      <View style={PP.backdrop}><Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={{ flex: 1 }} onPress={onClose} /></View>
       <View style={PP.sheet}>
         <View style={PP.handle} />
         <Text style={[PP.title, { color: accentColor }]}>{title}</Text>
@@ -87,10 +84,10 @@ function PlayerPicker({
             placeholder="Search or type new name…" placeholderTextColor={T.muted}
             autoFocus returnKeyType="done" onSubmitEditing={() => query.trim() && onSelect(query.trim())} />
           {query.trim() !== '' ? (
-            <TouchableOpacity onPress={() => onSelect(query.trim())}
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onSelect(query.trim())}
               style={[PP.setBtn, { backgroundColor: accentColor + '22', borderColor: accentColor + '55' }]}>
               <Text style={{ color: accentColor, fontWeight: '800', fontSize: 13 }}>Set</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
         </View>
 
@@ -100,19 +97,19 @@ function PlayerPicker({
           keyExtractor={(item, i) => item.name + i}
           style={{ maxHeight: 280 }}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => onSelect(item.name)}
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onSelect(item.name)}
               style={[PP.playerRow, item.isNew && { backgroundColor: accentColor + '12', borderColor: accentColor + '44' }]}>
               <Text style={[PP.playerName, item.isNew && { color: accentColor }]}>
                 {item.isNew ? `＋ Add "${item.name}"` : item.name}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
           ListEmptyComponent={<Text style={PP.empty}>No players found. Type a name above.</Text>}
         />
 
-        <TouchableOpacity onPress={onClose} style={PP.cancelBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onClose} style={PP.cancelBtn}>
           <Text style={{ color: T.subtext, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </Modal>
   )
@@ -129,8 +126,7 @@ const PP = StyleSheet.create({
   playerRow: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
   playerName: { color: T.text, fontWeight: '700', fontSize: 14 },
   empty: { color: T.muted, fontSize: 12, textAlign: 'center', padding: 20 },
-  cancelBtn: { marginTop: 14, padding: 11, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' },
-})
+  cancelBtn: { marginTop: 14, padding: 11, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' }})
 
 // ── New Batsman Modal ─────────────────────────────────────────────────────────
 function NewBatsmanModal({ visible, outName, wicketType, players, onConfirm }: {
@@ -157,21 +153,21 @@ function NewBatsmanModal({ visible, outName, wicketType, players, onConfirm }: {
 
           <ScrollView style={{ maxHeight: 220 }}>
             {canAddNew ? (
-              <TouchableOpacity onPress={() => onConfirm(query.trim())} style={[NB.row, { backgroundColor: 'rgba(255,68,68,0.1)', borderColor: 'rgba(255,68,68,0.3)' }]}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={[NB.row, { backgroundColor: 'rgba(255,68,68,0.1)', borderColor: 'rgba(255,68,68,0.3)' }]}>
                 <Text style={{ color: T.red, fontWeight: '700', fontSize: 13 }}>＋ Add "{query.trim()}"</Text>
-              </TouchableOpacity>
+              </Pressable>
             ) : null}
             {filtered.map(name => (
-              <TouchableOpacity key={name} onPress={() => onConfirm(name)} style={NB.row}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={name} onPress={() => onConfirm(name)} style={NB.row}>
                 <Text style={{ color: T.text, fontWeight: '700', fontSize: 14 }}>{name}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ))}
           </ScrollView>
 
           {query.trim() !== '' ? (
-            <TouchableOpacity onPress={() => onConfirm(query.trim())} style={NB.confirmBtn}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={NB.confirmBtn}>
               <Text style={{ color: T.text, fontWeight: '800', fontSize: 16 }}>✓ CONFIRM</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
         </View>
       </View>
@@ -187,8 +183,7 @@ const NB = StyleSheet.create({
   sub2: { color: T.text2, fontSize: 12, textAlign: 'center', marginBottom: 16 },
   input: { backgroundColor: T.surface, borderWidth: 1.5, borderColor: 'rgba(255,68,68,0.35)', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, color: T.text, fontSize: 14, marginBottom: 10 },
   row: { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
-  confirmBtn: { backgroundColor: T.accent, borderRadius: 11, padding: 13, alignItems: 'center', marginTop: 8 },
-})
+  confirmBtn: { backgroundColor: T.accent, borderRadius: 11, padding: 13, alignItems: 'center', marginTop: 8 }})
 
 // ── Bowler Change Modal ────────────────────────────────────────────────────────
 function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: {
@@ -202,7 +197,7 @@ function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onSkip}>
-      <View style={BC.overlay}><TouchableOpacity style={{ flex: 1 }} onPress={onSkip} /></View>
+      <View style={BC.overlay}><Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={{ flex: 1 }} onPress={onSkip} /></View>
       <View style={BC.sheet}>
         <View style={BC.handle} />
         <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 6 }}>🏏</Text>
@@ -215,14 +210,14 @@ function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: 
 
         <ScrollView style={{ maxHeight: 200 }}>
           {canAddNew ? (
-            <TouchableOpacity onPress={() => onConfirm(query.trim())} style={[BC.row, { backgroundColor: 'rgba(251,146,60,0.1)', borderColor: 'rgba(251,146,60,0.3)' }]}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={[BC.row, { backgroundColor: 'rgba(251,146,60,0.1)', borderColor: 'rgba(251,146,60,0.3)' }]}>
               <Text style={{ color: T.orange, fontWeight: '700', fontSize: 13 }}>＋ Add "{query.trim()}"</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
           {filtered.map(name => (
-            <TouchableOpacity key={name} onPress={() => onConfirm(name)} style={BC.row}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={name} onPress={() => onConfirm(name)} style={BC.row}>
               <Text style={{ color: T.text, fontWeight: '700', fontSize: 14 }}>{name}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
           {filtered.length === 0 && !canAddNew ? (
             <Text style={BC.empty}>
@@ -232,13 +227,13 @@ function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: 
         </ScrollView>
 
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-          <TouchableOpacity onPress={onSkip} style={BC.skipBtn}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onSkip} style={BC.skipBtn}>
             <Text style={{ color: T.subtext, fontWeight: '700', fontSize: 14 }}>Skip</Text>
-          </TouchableOpacity>
+          </Pressable>
           {query.trim() !== '' ? (
-            <TouchableOpacity onPress={() => onConfirm(query.trim())} style={BC.confirmBtn}>
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={BC.confirmBtn}>
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>✓ SET BOWLER</Text>
-            </TouchableOpacity>
+            </Pressable>
           ) : null}
         </View>
       </View>
@@ -256,8 +251,7 @@ const BC = StyleSheet.create({
   row: { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
   empty: { color: T.muted, fontSize: 12, textAlign: 'center', padding: 16 },
   skipBtn: { flex: 1, padding: 12, borderRadius: 11, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' },
-  confirmBtn: { flex: 2, padding: 12, borderRadius: 11, backgroundColor: T.orange, alignItems: 'center' },
-})
+  confirmBtn: { flex: 2, padding: 12, borderRadius: 11, backgroundColor: T.orange, alignItems: 'center' }})
 
 // ── Scorecard Tab ─────────────────────────────────────────────────────────────
 function ScorecardTab({ match }: { match: any }) {
@@ -270,12 +264,12 @@ function ScorecardTab({ match }: { match: any }) {
       {/* Innings switcher */}
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: T.border }}>
         {(['innings1', 'innings2'] as const).map(k => (
-          <TouchableOpacity key={k} onPress={() => setActiveInn(k)}
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={k} onPress={() => setActiveInn(k)}
             style={[SC.tab, activeInn === k && { borderBottomWidth: 2, borderBottomColor: T.accent }]}>
             <Text style={[SC.tabTxt, activeInn === k && { color: T.accent }]}>
               {match[k].battingTeam || (k === 'innings1' ? match.team1 : match.team2)}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -335,8 +329,7 @@ const SC = StyleSheet.create({
   tableHeader: { flexDirection: 'row', backgroundColor: T.card, paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: T.border },
   th: { flex: 1, textAlign: 'right', fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 0.8 },
   row: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
-  td: { flex: 1, textAlign: 'right', fontSize: 12, color: T.text2, fontVariant: ['tabular-nums'] },
-})
+  td: { flex: 1, textAlign: 'right', fontSize: 12, color: T.text2, fontVariant: ['tabular-nums'] }})
 
 // ── Ball by Ball Tab ───────────────────────────────────────────────────────────
 function BallByBallTab({ match }: { match: any }) {
@@ -367,10 +360,10 @@ function BallByBallTab({ match }: { match: any }) {
       {innings.length > 1 ? (
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: T.border }}>
           {innings.map((inn: any, i: number) => (
-            <TouchableOpacity key={i} onPress={() => setActiveIdx(i)}
+            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={i} onPress={() => setActiveIdx(i)}
               style={[SC.tab, activeIdx === i && { borderBottomColor: T.gold }]}>
               <Text style={[SC.tabTxt, activeIdx === i && { color: T.gold }]}>{inn.battingTeam}</Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
       ) : null}
@@ -496,9 +489,9 @@ export default function ScoringScreen() {
   if (error || !match) return (
     <View style={[S.root, { alignItems: 'center', justifyContent: 'center', padding: 40 }]}>
       <Text style={{ color: T.red, fontSize: 16, marginBottom: 20 }}>{error || 'Match not found'}</Text>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 12, backgroundColor: T.redDim, borderRadius: 10 }}>
+      <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={{ padding: 12, backgroundColor: T.redDim, borderRadius: 10 }}>
         <Text style={{ color: T.text, fontWeight: '700' }}>← Go Back</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   )
 
@@ -545,8 +538,7 @@ export default function ScoringScreen() {
       setLoading(true)
       const token = await getToken()
       const res = await fetch(apiUrl(`/api/matches/${id}/ball`), {
-        method: 'POST', headers: jsonHeaders(token), body: JSON.stringify(ballData),
-      })
+        method: 'POST', headers: jsonHeaders(token), body: JSON.stringify(ballData)})
       if (!res.ok) throw new Error('Failed to record ball')
       const data = await res.json()
       setMatch(data)
@@ -584,8 +576,7 @@ export default function ScoringScreen() {
       assistPlayer: wicket && ASSIST_TYPES.includes(wicketType) ? assistName : null,
       isWide: wide, isNoBall: noBall,
       extraRuns: wide || noBall ? (match.wideRuns ?? match.noBallRuns ?? 1) : 0,
-      batsmanName: striker, bowlerName,
-    }
+      batsmanName: striker, bowlerName}
     if (wicket) { setPendingBall(ball); setNewBatsmanOpen(true) }
     else submitBall(ball, null)
   }
@@ -611,8 +602,7 @@ export default function ScoringScreen() {
           const newStatus = match.status === 'innings1' ? 'innings2' : 'completed'
           const res = await fetch(apiUrl(`/api/matches/${id}`), {
             method: 'PUT', headers: jsonHeaders(token),
-            body: JSON.stringify({ ...match, status: newStatus }),
-          })
+            body: JSON.stringify({ ...match, status: newStatus })})
           if (!res.ok) throw new Error()
           setMatch(await res.json())
         } catch { await fetchMatch() }
@@ -633,16 +623,16 @@ export default function ScoringScreen() {
 
       {/* ── HEADER ── */}
       <View style={S.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={S.backBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => navigation.goBack()} style={S.backBtn}>
           <Text style={{ color: T.text2, fontSize: 18, fontWeight: '600' }}>←</Text>
-        </TouchableOpacity>
+        </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={S.headerTitle}>{match.team1} vs {match.team2}</Text>
           <Text style={S.headerSub}>{match.overs} overs · {match.status === 'completed' ? '✅ Completed' : '🟢 Live'}</Text>
         </View>
-        <TouchableOpacity onPress={handleUndo} disabled={loading} style={S.undoBtn}>
+        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={handleUndo} disabled={loading} style={S.undoBtn}>
           <Text style={S.undoBtnTxt}>UNDO</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* ── CONTENT ── */}
@@ -682,7 +672,7 @@ export default function ScoringScreen() {
                 {['R','B','SR'].map(h => <Text key={h} style={S.colHdr}>{h}</Text>)}
               </View>
               {/* Striker */}
-              <TouchableOpacity onPress={() => setPicker('striker')} style={S.playerRow}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setPicker('striker')} style={S.playerRow}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: T.accent }} />
                   <Text style={[S.playerName, !striker && { color: T.muted, fontSize: 13 }]} numberOfLines={1}>
@@ -692,9 +682,9 @@ export default function ScoringScreen() {
                 <Text style={S.statCell}>{strikerStats?.runs ?? 0}</Text>
                 <Text style={S.statCell}>{strikerStats?.balls ?? 0}</Text>
                 <Text style={S.statCell}>{(strikerStats?.balls ?? 0) > 0 ? Math.round(strikerStats.runs / strikerStats.balls * 100) : '—'}</Text>
-              </TouchableOpacity>
+              </Pressable>
               {/* Non-striker */}
-              <TouchableOpacity onPress={() => setPicker('nonStriker')} style={S.playerRow}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setPicker('nonStriker')} style={S.playerRow}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                   <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: T.muted }} />
                   <Text style={[S.playerName, { color: T.text2 }, !nonStriker && { color: T.muted, fontSize: 13 }]} numberOfLines={1}>
@@ -704,9 +694,9 @@ export default function ScoringScreen() {
                 <Text style={S.statCell}>{nonStrikerStats?.runs ?? 0}</Text>
                 <Text style={S.statCell}>{nonStrikerStats?.balls ?? 0}</Text>
                 <Text style={S.statCell}>{(nonStrikerStats?.balls ?? 0) > 0 ? Math.round(nonStrikerStats.runs / nonStrikerStats.balls * 100) : '—'}</Text>
-              </TouchableOpacity>
+              </Pressable>
               {/* Bowler */}
-              <TouchableOpacity onPress={() => setPicker('bowler')} style={[S.playerRow, { backgroundColor: 'rgba(251,146,60,0.04)' }]}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => setPicker('bowler')} style={[S.playerRow, { backgroundColor: 'rgba(251,146,60,0.04)' }]}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                   <Text style={{ fontSize: 10, color: T.orange, fontWeight: '800' }}>BOWL</Text>
                   <Text style={[S.playerName, { color: T.orange }, !bowlerName && { color: T.muted, fontSize: 13 }]} numberOfLines={1}>
@@ -716,7 +706,7 @@ export default function ScoringScreen() {
                 <Text style={S.statCell}>{fmtOv(bowlerStats?.balls ?? 0)}</Text>
                 <Text style={S.statCell}>{bowlerStats?.runs ?? 0}</Text>
                 <Text style={[S.statCell, { color: T.red, fontWeight: '700' }]}>{bowlerStats?.wickets ?? 0}W</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* This over */}
@@ -738,12 +728,12 @@ export default function ScoringScreen() {
             <View style={S.extrasRow}>
               {[{ key: 'wide', label: 'Wide', active: wide, toggle: () => setWide(v => !v), color: T.sky },
                 { key: 'noBall', label: 'No Ball', active: noBall, toggle: () => setNoBall(v => !v), color: T.orange }].map(e => (
-                <TouchableOpacity key={e.key} onPress={e.toggle} style={[S.extraBtn, e.active && { backgroundColor: e.color + '18' }]}>
+                <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={e.key} onPress={e.toggle} style={[S.extraBtn, e.active && { backgroundColor: e.color + '18' }]}>
                   <View style={[S.extraCheck, { borderColor: e.active ? e.color : T.muted }, e.active && { backgroundColor: e.color + '33' }]}>
                     {e.active ? <Text style={{ fontSize: 13, color: e.color }}>✓</Text> : null}
                   </View>
                   <Text style={[S.extraLabel, { color: e.active ? e.color : T.subtext }]}>{e.label}</Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
 
@@ -754,41 +744,41 @@ export default function ScoringScreen() {
                 const clr = r === 4 ? T.accent : r === 6 ? T.purple : T.red
                 const dim = r === 4 ? T.accentDim : r === 6 ? T.purpleDim : T.redDim
                 return (
-                  <TouchableOpacity key={r} onPress={() => setRuns(r)} activeOpacity={0.7}
+                  <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={r} onPress={() => setRuns(r)}
                     style={[S.runBtn, sel && { backgroundColor: dim, borderColor: clr }]}>
                     <Text style={[S.runBtnTxt, { color: sel ? clr : T.subtext }]}>{r}</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 )
               })}
             </View>
 
             {/* Wicket + OK */}
             <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 12, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { setWicket(w => !w); if (!wicket && runs === null) setRuns(0) }}
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => { setWicket(w => !w); if (!wicket && runs === null) setRuns(0) }}
                 style={[S.wicketBtn, wicket && { backgroundColor: 'rgba(127,29,29,0.7)', borderColor: T.red }]}>
                 <Text style={{ fontSize: 18 }}>{wicket ? '💀' : '🏏'}</Text>
                 <Text style={[S.wicketBtnTxt, wicket && { color: T.red }]}>{wicket ? 'W ON' : 'WICKET'}</Text>
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity onPress={() => { if (wicket) setShowWktMenu(v => !v) }} style={[S.wicketTypeBtn, wicket && { backgroundColor: 'rgba(127,29,29,0.25)', borderColor: T.red + '44' }]}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => { if (wicket) setShowWktMenu(v => !v) }} style={[S.wicketTypeBtn, wicket && { backgroundColor: 'rgba(127,29,29,0.25)', borderColor: T.red + '44' }]}>
                 <Text style={{ color: wicket ? T.red : T.text2, fontWeight: '700', fontSize: 14 }}>{wicketType}</Text>
                 {wicket ? <Text style={{ color: T.red, fontSize: 10 }}>▼</Text> : null}
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity onPress={handleOK} disabled={!okEnabled} activeOpacity={0.8}
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={handleOK} disabled={!okEnabled}
                 style={[S.okBtn, okEnabled && { backgroundColor: T.accent, borderColor: T.red, shadowColor: '#cc0000', shadowOpacity: 0.5, shadowOffset: { width: 0, height: 4 }, shadowRadius: 10, elevation: 6 }]}>
                 {loading ? <ActivityIndicator color={T.text} size="small" /> : <Text style={[S.okBtnTxt, { color: okEnabled ? T.text : T.muted }]}>OK</Text>}
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Wicket type dropdown */}
             {showWktMenu && wicket ? (
               <View style={S.wktDropdown}>
                 {WICKET_TYPES.map(type => (
-                  <TouchableOpacity key={type} onPress={() => { setWicketType(type); setAssistName(''); setShowWktMenu(false) }}
+                  <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={type} onPress={() => { setWicketType(type); setAssistName(''); setShowWktMenu(false) }}
                     style={[S.wktItem, wicketType === type && { backgroundColor: 'rgba(255,68,68,0.15)' }]}>
                     <Text style={{ color: wicketType === type ? T.red : T.text2, fontWeight: '700', fontSize: 15 }}>{type}</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
             ) : null}
@@ -805,10 +795,10 @@ export default function ScoringScreen() {
                 {innings.bowlingStats?.length > 0 ? (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {innings.bowlingStats.map((p: any) => (
-                      <TouchableOpacity key={p.name} onPress={() => setAssistName(p.name)}
+                      <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={p.name} onPress={() => setAssistName(p.name)}
                         style={[{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 7, borderWidth: 1 }, assistName === p.name ? { backgroundColor: 'rgba(255,68,68,0.25)', borderColor: T.accent + '55' } : { backgroundColor: T.border2, borderColor: T.border }]}>
                         <Text style={{ fontSize: 12, fontWeight: '700', color: assistName === p.name ? T.red : T.subtext }}>{p.name}</Text>
-                      </TouchableOpacity>
+                      </Pressable>
                     ))}
                   </View>
                 ) : null}
@@ -817,12 +807,12 @@ export default function ScoringScreen() {
 
             {/* Action buttons */}
             <View style={{ flexDirection: 'row', gap: 6, marginHorizontal: 12, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { setStriker(nonStriker); setNonStriker(striker) }} style={S.actionBtn}>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => { setStriker(nonStriker); setNonStriker(striker) }} style={S.actionBtn}>
                 <Text style={S.actionBtnTxt}>⇄ SWITCH BAT</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleEndInnings} style={S.actionBtn}>
+              </Pressable>
+              <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={handleEndInnings} style={S.actionBtn}>
                 <Text style={S.actionBtnTxt}>END INNINGS</Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
           </ScrollView>
@@ -835,11 +825,11 @@ export default function ScoringScreen() {
       {/* ── BOTTOM TABS ── */}
       <View style={S.bottomTabs}>
         {TABS.map(t => (
-          <TouchableOpacity key={t.key} onPress={() => setTab(t.key)} style={S.bottomTab}>
+          <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={t.key} onPress={() => setTab(t.key)} style={S.bottomTab}>
             {tab === t.key ? <View style={S.bottomTabIndicator} /> : null}
             <Text style={{ fontSize: 20 }}>{t.icon}</Text>
             <Text style={[S.bottomTabLabel, tab === t.key && { color: T.accent }]}>{t.label}</Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -924,5 +914,4 @@ const S = StyleSheet.create({
   bottomTabs: { flexDirection: 'row', backgroundColor: T.card, borderTopWidth: 1, borderTopColor: T.border },
   bottomTab: { flex: 1, paddingVertical: 12, alignItems: 'center', gap: 3, position: 'relative' },
   bottomTabIndicator: { position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: T.accent, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
-  bottomTabLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: T.muted },
-})
+  bottomTabLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: T.muted }})
