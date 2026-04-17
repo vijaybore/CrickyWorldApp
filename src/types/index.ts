@@ -87,6 +87,7 @@ export interface Innings {
 export interface Match {
   _id:            string
   id:             string
+  createdBy?:     string
   team1:          string
   team2:          string
   team1Players:   string[]

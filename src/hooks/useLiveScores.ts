@@ -1,4 +1,7 @@
 // src/hooks/useLiveScores.ts
+// Always sends Authorization header → backend filters GET /api/matches by createdBy (userId)
+// so each user only ever sees their own matches.
+
 import { useState, useEffect, useCallback, useRef } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { apiUrl } from '../services/api'
@@ -14,6 +17,7 @@ interface RawMatch {
   tossWinner?: string; battingFirst?: string; result?: string
   innings1?: RawInnings; innings2?: RawInnings
   createdAt?: string; updatedAt?: string
+  createdBy?: string
   tournamentId?: string | null; tournamentName?: string | null
 }
 
@@ -33,7 +37,8 @@ function makeInnings(r?: RawInnings): Innings {
 function normalize(r: RawMatch): Match {
   const status = (r.status ?? 'setup') as Match['status']
   return {
-    id: r._id, team1: r.team1 ?? '', team2: r.team2 ?? '',
+    _id: r._id, id: r._id,
+    team1: r.team1 ?? '', team2: r.team2 ?? '',
     team1Players: r.team1Players ?? [], team2Players: r.team2Players ?? [],
     overs: r.overs ?? 0, status,
     tossWinner: r.tossWinner ?? '', battingFirst: r.battingFirst ?? '',
@@ -63,7 +68,10 @@ export function useLiveScores({ liveOnly = false, pollInterval = 0, matchId = nu
     setError(null)
     try {
       const token = await AsyncStorage.getItem('token').catch(() => null)
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      // Always include token — backend uses it to filter matches by this user only
+      const headers: Record<string, string> = token
+        ? { Authorization: `Bearer ${token}` }
+        : {}
       const url = matchId ? apiUrl(`/api/matches/${matchId}`) : apiUrl('/api/matches')
       const res = await fetch(url, { headers, signal: abortRef.current.signal })
       if (!res.ok) throw new Error(`Server error ${res.status}`)
