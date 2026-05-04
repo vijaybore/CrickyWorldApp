@@ -1,5 +1,5 @@
 // src/screens/ManagePlayersScreen.tsx
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import {
   View, Text, TextInput, Pressable, FlatList,
   Modal, ScrollView, StyleSheet, ActivityIndicator,
@@ -13,14 +13,20 @@ import type { Player, PlayerRole, RootStackParamList } from '../types'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
-const ROLES: PlayerRole[]              = ['batsman', 'bowler', 'allrounder', 'wk-batsman']
+const ROLES: PlayerRole[]                = ['batsman', 'bowler', 'allrounder', 'wk-batsman']
 const ROLE_LABEL: Record<string, string> = { batsman: 'Batsman', bowler: 'Bowler', allrounder: 'All-Rounder', 'wk-batsman': 'WK-Bat' }
 const ROLE_ICON:  Record<string, string> = { batsman: '🏏', bowler: '🎳', allrounder: '⭐', 'wk-batsman': '🧤' }
 const ROLE_COLOR: Record<string, string> = { batsman: '#60a5fa', bowler: '#f87171', allrounder: '#facc15', 'wk-batsman': '#a78bfa' }
 const BG_POOL = ['#7f1d1d', '#1e3a5f', '#064e3b', '#78350f', '#3b0764', '#134e4a', '#422006', '#0c4a6e']
 
+// ✅ FIXED: Moved outside component to avoid recreation on every render
+const ALL_FILTER = ['all', ...ROLES] as const
+
 const bgFor      = (name: string) => BG_POOL[name.charCodeAt(0) % BG_POOL.length]
 const initialsOf = (name: string) => name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
+const roleColor  = (role?: PlayerRole | string) => ROLE_COLOR[role ?? ''] ?? '#555'
+const roleIcon   = (role?: PlayerRole | string) => ROLE_ICON[role ?? '']  ?? '👤'
+const roleLabel  = (role?: PlayerRole | string) => ROLE_LABEL[role ?? ''] ?? 'Player'
 
 async function getToken(): Promise<string | null> {
   return AsyncStorage.getItem('token').catch(() => null)
@@ -28,7 +34,7 @@ async function getToken(): Promise<string | null> {
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ player, size = 44 }: { player: Player; size?: number }) {
-  const rc = ROLE_COLOR[player.role] || '#555'
+  const rc = roleColor(player.role)
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', borderWidth: 2, borderColor: rc + '44', flexShrink: 0 }}>
       {player.photoUrl
@@ -42,7 +48,7 @@ function Avatar({ player, size = 44 }: { player: Player; size?: number }) {
 
 // ── Player Profile Modal ──────────────────────────────────────────────────────
 function PlayerProfileModal({ player, onClose }: { player: Player; onClose: () => void }) {
-  const rc = ROLE_COLOR[player.role] || '#555'
+  const rc = roleColor(player.role)
 
   const statRows: { label: string; value: string | number | undefined }[] = [
     { label: 'Matches',       value: player.totalMatches  },
@@ -55,37 +61,25 @@ function PlayerProfileModal({ player, onClose }: { player: Player; onClose: () =
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      {/* Backdrop */}
       <Pressable style={P.backdrop} onPress={onClose} />
-
-      {/* Card */}
       <View style={P.card}>
-        {/* Close button */}
         <Pressable onPress={onClose} style={P.closeBtn} android_ripple={{ color: 'rgba(255,255,255,0.12)' }}>
           <Text style={{ color: '#888', fontSize: 16, fontWeight: '700' }}>✕</Text>
         </Pressable>
-
-        {/* Hero banner */}
         <View style={[P.hero, { backgroundColor: bgFor(player.name) }]}>
           <View style={[P.heroBorder, { borderColor: rc + '55' }]}>
             <Avatar player={player} size={86} />
           </View>
         </View>
-
-        {/* Name + role */}
         <View style={P.nameSection}>
           <Text style={P.playerName}>{player.name}</Text>
-          {player.jerseyNumber ? (
-            <Text style={P.jerseyBadge}>#{player.jerseyNumber}</Text>
-          ) : null}
+          {player.jerseyNumber ? <Text style={P.jerseyBadge}>#{player.jerseyNumber}</Text> : null}
           <View style={[P.rolePill, { backgroundColor: rc + '18', borderColor: rc + '44' }]}>
             <Text style={[P.rolePillTxt, { color: rc }]}>
-              {ROLE_ICON[player.role]}  {ROLE_LABEL[player.role]}
+              {roleIcon(player.role)}  {roleLabel(player.role)}
             </Text>
           </View>
         </View>
-
-        {/* Stats grid */}
         {statRows.length > 0 ? (
           <View style={P.statsGrid}>
             {statRows.map(({ label, value }) => (
@@ -106,103 +100,20 @@ function PlayerProfileModal({ player, onClose }: { player: Player; onClose: () =
 }
 
 const P = StyleSheet.create({
-  backdrop: {
-    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-  },
-  card: {
-    position: 'absolute',
-    top: '15%',
-    left: 24,
-    right: 24,
-    backgroundColor: '#111',
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 16,
-  },
-  closeBtn: {
-    position: 'absolute', top: 14, right: 14, zIndex: 10,
-    width: 30, height: 30, borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderWidth: 1, borderColor: '#2a2a2a',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  hero: {
-    height: 110,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 0,
-  },
-  heroBorder: {
-    borderWidth: 3,
-    borderRadius: 50,
-    transform: [{ translateY: 43 }],
-    elevation: 8,
-  },
-  nameSection: {
-    alignItems: 'center',
-    paddingTop: 52,
-    paddingBottom: 18,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  playerName: {
-    color: '#f0f0f0',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  jerseyBadge: {
-    color: '#444',
-    fontSize: 13,
-    fontFamily: 'monospace',
-    marginBottom: 8,
-  },
-  rolePill: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
-  rolePillTxt: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingVertical: 18,
-  },
-  statCell: {
-    width: '33.33%',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  statValue: {
-    color: '#f0f0f0',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  statLabel: {
-    color: '#444',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
+  backdrop:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)' },
+  card:        { position: 'absolute', top: '15%', left: 24, right: 24, backgroundColor: '#111', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 24, elevation: 16 },
+  closeBtn:    { position: 'absolute', top: 14, right: 14, zIndex: 10, width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: '#2a2a2a', alignItems: 'center', justifyContent: 'center' },
+  hero:        { height: 110, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 0 },
+  heroBorder:  { borderWidth: 3, borderRadius: 50, transform: [{ translateY: 43 }], elevation: 8 },
+  nameSection: { alignItems: 'center', paddingTop: 52, paddingBottom: 18, paddingHorizontal: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  playerName:  { color: '#f0f0f0', fontSize: 22, fontWeight: '800', letterSpacing: 0.4, textAlign: 'center', marginBottom: 4 },
+  jerseyBadge: { color: '#444', fontSize: 13, fontFamily: 'monospace', marginBottom: 8 },
+  rolePill:    { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5 },
+  rolePillTxt: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  statsGrid:   { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingVertical: 18 },
+  statCell:    { width: '33.33%', alignItems: 'center', paddingVertical: 10 },
+  statValue:   { color: '#f0f0f0', fontSize: 18, fontWeight: '800', marginBottom: 3 },
+  statLabel:   { color: '#444', fontSize: 10, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
 })
 
 // ── Add Player Drawer ─────────────────────────────────────────────────────────
@@ -228,9 +139,11 @@ function AddPlayerDrawer({ onClose, onAdded }: { onClose: () => void; onAdded: (
         headers: jsonHeaders(token),
         body: JSON.stringify({ name: name.trim(), role, battingStyle: batSty, bowlingStyle: bowlSty, jerseyNumber: jersey }),
       })
+      // ✅ FIXED: Check res.ok before parsing JSON
       if (!res.ok) {
-        const d = await res.json() as { message?: string }
-        throw new Error(d.message ?? 'Failed to add player')
+        let msg = 'Failed to add player'
+        try { const d = await res.json() as { message?: string }; msg = d.message ?? msg } catch {}
+        throw new Error(msg)
       }
       onAdded(await res.json() as Player)
       onClose()
@@ -259,8 +172,8 @@ function AddPlayerDrawer({ onClose, onAdded }: { onClose: () => void; onAdded: (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
             {ROLES.map(r => (
               <Pressable android_ripple={{ color: 'rgba(255,255,255,0.12)' }} key={r} onPress={() => setRole(r)}
-                style={[D.roleBtn, role === r && { borderColor: ROLE_COLOR[r], backgroundColor: ROLE_COLOR[r] + '22' }]}>
-                <Text style={[D.roleTxt, role === r && { color: ROLE_COLOR[r] }]}>{ROLE_ICON[r]} {ROLE_LABEL[r]}</Text>
+                style={[D.roleBtn, role === r && { borderColor: roleColor(r), backgroundColor: roleColor(r) + '22' }]}>
+                <Text style={[D.roleTxt, role === r && { color: roleColor(r) }]}>{roleIcon(r)} {roleLabel(r)}</Text>
               </Pressable>
             ))}
           </View>
@@ -294,41 +207,33 @@ function AddPlayerDrawer({ onClose, onAdded }: { onClose: () => void; onAdded: (
 }
 
 const D = StyleSheet.create({
-  backdrop:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.82)' },
-  sheet:     { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0f0f0f', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  handle:    { width: 40, height: 4, backgroundColor: '#2a2a2a', borderRadius: 2, alignSelf: 'center', marginTop: 14 },
-  header:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  title:     { color: '#f0f0f0', fontWeight: '700', fontSize: 20 },
-  closeBtn:  { width: 30, height: 30, borderRadius: 8, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a2a2a' },
-  body:      { padding: 18, paddingBottom: 40 },
-  lbl:       { fontSize: 10, color: '#777', fontWeight: '800', letterSpacing: 1.5, marginBottom: 6, marginTop: 2 },
-  input:     { backgroundColor: '#0a0a0a', borderRadius: 10, borderWidth: 1.5, borderColor: '#222', color: '#f0f0f0', fontSize: 14, padding: 11, paddingHorizontal: 14, marginBottom: 14 },
-  roleBtn:   { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5, borderColor: '#2a2a2a' },
-  roleTxt:   { color: '#666', fontSize: 12, fontWeight: '800' },
-  errorBox:  { padding: 10, borderRadius: 10, backgroundColor: 'rgba(248,113,113,0.12)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.3)', marginBottom: 14 },
-  errorTxt:  { color: '#f87171', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  saveBtn:   { backgroundColor: '#cc0000', borderRadius: 12, padding: 13, alignItems: 'center' },
-  saveTxt:   { color: '#fff', fontSize: 15, fontWeight: '800' },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.82)' },
+  sheet:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#0f0f0f', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  handle:   { width: 40, height: 4, backgroundColor: '#2a2a2a', borderRadius: 2, alignSelf: 'center', marginTop: 14 },
+  header:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  title:    { color: '#f0f0f0', fontWeight: '700', fontSize: 20 },
+  closeBtn: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#1a1a1a', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#2a2a2a' },
+  body:     { padding: 18, paddingBottom: 40 },
+  lbl:      { fontSize: 10, color: '#777', fontWeight: '800', letterSpacing: 1.5, marginBottom: 6, marginTop: 2 },
+  input:    { backgroundColor: '#0a0a0a', borderRadius: 10, borderWidth: 1.5, borderColor: '#222', color: '#f0f0f0', fontSize: 14, padding: 11, paddingHorizontal: 14, marginBottom: 14 },
+  roleBtn:  { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1.5, borderColor: '#2a2a2a' },
+  roleTxt:  { color: '#666', fontSize: 12, fontWeight: '800' },
+  errorBox: { padding: 10, borderRadius: 10, backgroundColor: 'rgba(248,113,113,0.12)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.3)', marginBottom: 14 },
+  errorTxt: { color: '#f87171', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  saveBtn:  { backgroundColor: '#cc0000', borderRadius: 12, padding: 13, alignItems: 'center' },
+  saveTxt:  { color: '#fff', fontSize: 15, fontWeight: '800' },
 })
 
 // ── Player Card ───────────────────────────────────────────────────────────────
-function PlayerCard({
-  player,
-  onDelete,
-  deleting,
-  onPress,
-}: {
-  player: Player
-  onDelete: (id: string) => void
-  deleting: string | null
-  onPress: (player: Player) => void
+function PlayerCard({ player, onDelete, deleting, onPress }: {
+  player: Player; onDelete: (id: string) => void; deleting: string | null; onPress: (p: Player) => void
 }) {
   const [confirm, setConfirm] = useState(false)
   const stats: string[] = []
   if ((player.totalRuns    ?? 0) > 0) stats.push(`${player.totalRuns} runs`)
   if ((player.totalWickets ?? 0) > 0) stats.push(`${player.totalWickets} wkts`)
   if ((player.totalMatches ?? 0) > 0) stats.push(`${player.totalMatches} matches`)
-  const rc = ROLE_COLOR[player.role] || '#555'
+  const rc = roleColor(player.role)
 
   const handleDelete = () => {
     if (!confirm) { setConfirm(true); setTimeout(() => setConfirm(false), 3000); return }
@@ -336,11 +241,7 @@ function PlayerCard({
   }
 
   return (
-    <Pressable
-      android_ripple={{ color: 'rgba(255,255,255,0.06)' }}
-      onPress={() => onPress(player)}
-      style={C.card}
-    >
+    <Pressable android_ripple={{ color: 'rgba(255,255,255,0.06)' }} onPress={() => onPress(player)} style={C.card}>
       <Avatar player={player} size={46} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 }}>
@@ -349,19 +250,14 @@ function PlayerCard({
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, backgroundColor: rc + '18', borderWidth: 1, borderColor: rc + '33' }}>
-            <Text style={{ fontSize: 10, fontWeight: '800', color: rc }}>{ROLE_ICON[player.role]} {ROLE_LABEL[player.role]}</Text>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: rc }}>{roleIcon(player.role)} {roleLabel(player.role)}</Text>
           </View>
           {stats.length > 0 ? <Text style={C.stats}>{stats.join(' · ')}</Text> : null}
         </View>
       </View>
-      <Pressable
-        android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
-        onPress={handleDelete}
-        disabled={deleting === player._id}
-        style={[C.delBtn, confirm && { borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.2)' }]}
-        // Stop the card's onPress firing when tapping delete
-        hitSlop={8}
-      >
+      <Pressable android_ripple={{ color: 'rgba(255,255,255,0.12)' }} onPress={handleDelete}
+        disabled={deleting === player._id} hitSlop={8}
+        style={[C.delBtn, confirm && { borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.2)' }]}>
         <Text style={[C.delTxt, confirm && { color: '#f87171' }]}>
           {deleting === player._id ? '⏳' : confirm ? '❗' : '🗑'}
         </Text>
@@ -382,39 +278,49 @@ const C = StyleSheet.create({
 // ── MAIN SCREEN ───────────────────────────────────────────────────────────────
 export default function ManagePlayersScreen() {
   const navigation   = useNavigation<Nav>()
-  const [players,    setPlayers]       = useState<Player[]>([])
-  const [loading,    setLoading]       = useState(true)
-  const [deleting,   setDeleting]      = useState<string | null>(null)
-  const [search,     setSearch]        = useState('')
-  const [roleFilter, setRoleFilter]    = useState<'all' | PlayerRole>('all')
-  const [showAdd,    setShowAdd]       = useState(false)
-  const [fetchError, setFetchError]    = useState('')
+  const [players,    setPlayers]    = useState<Player[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [deleting,   setDeleting]   = useState<string | null>(null)
+  const [search,     setSearch]     = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | PlayerRole>('all')
+  const [showAdd,    setShowAdd]    = useState(false)
+  const [fetchError, setFetchError] = useState('')
   const [profilePlayer, setProfilePlayer] = useState<Player | null>(null)
 
-  const ALL_FILTER = ['all', ...ROLES] as const
-
-  useEffect(() => { load() }, [])
-
-  const load = async () => {
+  // ✅ FIXED: useCallback so load() is stable and useEffect dep array is clean
+  const load = useCallback(async () => {
     setLoading(true); setFetchError('')
     try {
       const token = await getToken()
       const res   = await fetch(apiUrl('/api/players'), { headers: authHeaders(token) })
-      setPlayers(await res.json() as Player[])
-    } catch { setFetchError('Failed to load players') }
-    finally  { setLoading(false) }
-  }
+      // ✅ FIXED: Guard against non-JSON / error responses before calling .json()
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`)
+      }
+      const data = await res.json()
+      // ✅ FIXED: Ensure we always set an array, never null/undefined
+      setPlayers(Array.isArray(data) ? data : [])
+    } catch (e: unknown) {
+      setFetchError((e as Error).message ?? 'Failed to load players')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
     try {
       const token = await getToken()
-      await fetch(apiUrl(`/api/players/${id}`), { method: 'DELETE', headers: authHeaders(token) })
+      const res = await fetch(apiUrl(`/api/players/${id}`), { method: 'DELETE', headers: authHeaders(token) })
+      // ✅ FIXED: Check res.ok on delete too
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
       setPlayers(ps => ps.filter(p => p._id !== id))
-      // Close profile if it belongs to the deleted player
       if (profilePlayer?._id === id) setProfilePlayer(null)
-    } catch { Alert.alert('Error', 'Failed to delete player') }
-    finally  { setDeleting(null) }
+    } catch (e: unknown) {
+      Alert.alert('Error', (e as Error).message ?? 'Failed to delete player')
+    } finally  { setDeleting(null) }
   }
 
   const visible = players.filter(p => {
@@ -429,8 +335,6 @@ export default function ManagePlayersScreen() {
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor="#080808" />
-
-      {/* Header */}
       <View style={S.header}>
         <View style={S.headerRow}>
           <Pressable android_ripple={{ color: 'rgba(255,255,255,0.12)' }} onPress={() => navigation.goBack()} style={S.backBtn}>
@@ -444,8 +348,6 @@ export default function ManagePlayersScreen() {
             <Text style={S.addBtnTxt}>➕ Add</Text>
           </Pressable>
         </View>
-
-        {/* Search */}
         <View style={S.searchWrap}>
           <Text style={{ color: '#444', fontSize: 15, marginRight: 8 }}>🔍</Text>
           <TextInput style={S.searchInput} value={search} onChangeText={setSearch}
@@ -456,16 +358,14 @@ export default function ManagePlayersScreen() {
             </Pressable>
           ) : null}
         </View>
-
-        {/* Role chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
           style={{ paddingHorizontal: 14, paddingBottom: 12 }} contentContainerStyle={{ gap: 6 }}>
           {ALL_FILTER.map(r => {
             const active = roleFilter === r
-            const color  = r === 'all' ? '#ff4444' : ROLE_COLOR[r]
+            const color  = r === 'all' ? '#ff4444' : roleColor(r)
             const label  = r === 'all'
               ? `All (${counts.all})`
-              : `${ROLE_ICON[r]} ${ROLE_LABEL[r]} (${counts[r] ?? 0})`
+              : `${roleIcon(r)} ${roleLabel(r)} (${counts[r] ?? 0})`
             return (
               <Pressable android_ripple={{ color: 'rgba(255,255,255,0.12)' }} key={r}
                 onPress={() => setRoleFilter(r as 'all' | PlayerRole)}
@@ -477,7 +377,6 @@ export default function ManagePlayersScreen() {
         </ScrollView>
       </View>
 
-      {/* Content */}
       {loading ? (
         <View style={S.centered}><ActivityIndicator color="#ff4444" size="large" /></View>
       ) : fetchError !== '' ? (
@@ -505,24 +404,17 @@ export default function ManagePlayersScreen() {
           data={visible}
           keyExtractor={p => p._id}
           renderItem={({ item }) => (
-            <PlayerCard
-              player={item}
-              onDelete={handleDelete}
-              deleting={deleting}
-              onPress={setProfilePlayer}
-            />
+            <PlayerCard player={item} onDelete={handleDelete} deleting={deleting} onPress={setProfilePlayer} />
           )}
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      {/* Add player drawer */}
       {showAdd ? (
         <AddPlayerDrawer onClose={() => setShowAdd(false)} onAdded={p => setPlayers(ps => [p, ...ps])} />
       ) : null}
 
-      {/* Player profile modal */}
       {profilePlayer ? (
         <PlayerProfileModal player={profilePlayer} onClose={() => setProfilePlayer(null)} />
       ) : null}
@@ -531,20 +423,20 @@ export default function ManagePlayersScreen() {
 }
 
 const S = StyleSheet.create({
-  root:       { flex: 1, backgroundColor: '#0d0d0d' },
-  header:     { backgroundColor: '#0d0d0d', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
-  headerRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingTop: Platform.OS === 'ios' ? 50 : 36 },
-  backBtn:    { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
-  backTxt:    { color: '#aaa', fontSize: 18, fontWeight: '600' },
-  title:      { fontSize: 22, fontWeight: '700', color: '#f0f0f0', letterSpacing: 0.5 },
-  subtitle:   { fontSize: 11, color: '#444', fontWeight: '600', marginTop: 1 },
-  addBtn:     { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#cc0000' },
-  addBtnTxt:  { color: '#fff', fontSize: 13, fontWeight: '800' },
-  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 10, backgroundColor: '#0a0a0a', borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)', paddingHorizontal: 14, paddingVertical: 9 },
-  searchInput:{ flex: 1, color: '#f0f0f0', fontSize: 14 },
-  chip:       { flexShrink: 0, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'transparent' },
-  chipTxt:    { color: '#444', fontSize: 11, fontWeight: '800' },
-  centered:   { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  retryBtn:   { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  emptyBtn:   { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: '#cc0000' },
+  root:        { flex: 1, backgroundColor: '#0d0d0d' },
+  header:      { backgroundColor: '#0d0d0d', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  headerRow:   { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, paddingTop: Platform.OS === 'ios' ? 50 : 36 },
+  backBtn:     { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center' },
+  backTxt:     { color: '#aaa', fontSize: 18, fontWeight: '600' },
+  title:       { fontSize: 22, fontWeight: '700', color: '#f0f0f0', letterSpacing: 0.5 },
+  subtitle:    { fontSize: 11, color: '#444', fontWeight: '600', marginTop: 1 },
+  addBtn:      { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: '#cc0000' },
+  addBtnTxt:   { color: '#fff', fontSize: 13, fontWeight: '800' },
+  searchWrap:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 10, backgroundColor: '#0a0a0a', borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)', paddingHorizontal: 14, paddingVertical: 9 },
+  searchInput: { flex: 1, color: '#f0f0f0', fontSize: 14 },
+  chip:        { flexShrink: 0, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.07)', backgroundColor: 'transparent' },
+  chipTxt:     { color: '#444', fontSize: 11, fontWeight: '800' },
+  centered:    { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
+  retryBtn:    { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  emptyBtn:    { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: '#cc0000' },
 })

@@ -1,143 +1,144 @@
-// src/context/AuthContext.tsx
-// ─────────────────────────────────────────────────────────────────────────────
-// ONE USER PER DEVICE logic:
-//  1. App opens → tries existing token (/api/auth/me)
-//  2. Token missing/expired → tries POST /api/auth/device-login with { deviceId }
-//  3. Both fail → user lands on Login screen
-//  4. After OTP login → deviceId is sent to backend which stores it on the User doc
-//  5. Next launch → step 2 silently logs them back in (no OTP needed)
-// ─────────────────────────────────────────────────────────────────────────────
-
-import React, {
-  createContext, useContext, useState, useEffect, useCallback, type ReactNode,
-} from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth'
 import { apiUrl } from '../services/api'
-import { getDeviceId } from '../services/deviceId'
-import type { User } from '../types'
+
+export interface UserSession {
+  mobile:   string
+  username: string
+  token:    string
+}
 
 interface AuthContextValue {
-  user:            User | null
-  loading:         boolean
-  deviceId:        string | null
-  loginWithOTP:    (mobile: string, otp: string, name?: string) => Promise<void>
-  loginWithDevice: () => Promise<boolean>
-  logout:          () => Promise<void>
+  user:         UserSession | null
+  loading:      boolean
+  sendOTP:      (mobile: string) => Promise<void>
+  loginWithOTP: (otp: string, name?: string) => Promise<void>
+  logout:       () => Promise<void>
+  confirmation: FirebaseAuthTypes.ConfirmationResult | null
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+const STORAGE_KEY = '@crickyworld_session'
+const AuthContext  = createContext<AuthContextValue | null>(null)
 
-async function clearAuth(): Promise<void> {
-  await AsyncStorage.removeItem('token')
-  await AsyncStorage.removeItem('user')
-}
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user,         setUser]         = useState<UserSession | null>(null)
+  const [loading,      setLoading]      = useState(true)
+  const [confirmation, setConfirmation] = useState<FirebaseAuthTypes.ConfirmationResult | null>(null)
+  const [pendingMobile, setPendingMobile] = useState<string>('')
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user,     setUser]     = useState<User | null>(null)
-  const [loading,  setLoading]  = useState(true)
-  const [deviceId, setDeviceId] = useState<string | null>(null)
-
+  // ── Restore saved session on app launch ──────────────────────────────────
   useEffect(() => {
-    const init = async () => {
+    const restore = async () => {
       try {
-        const did = await getDeviceId()
-        setDeviceId(did)
-
-        // ── Step 1: Try stored token ──────────────────────────────────────────
-        const token = await AsyncStorage.getItem('token')
-        if (token) {
-          try {
-            const res = await fetch(apiUrl('/api/auth/me'), {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            if (res.ok) {
-              setUser(await res.json() as User)
-              return  // ✅ done
-            }
-          } catch { /* network issue → try device login */ }
-        }
-
-        // ── Step 2: Try device-based silent login ─────────────────────────────
-        try {
-          const res = await fetch(apiUrl('/api/auth/device-login'), {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ deviceId: did }),
-          })
-          if (res.ok) {
-            const data = await res.json() as { token: string; user: User }
-            await AsyncStorage.setItem('token', data.token)
-            await AsyncStorage.setItem('user',  JSON.stringify(data.user))
-            setUser(data.user)
-            return  // ✅ done
-          }
-        } catch { /* device not registered → show login screen */ }
-
-        // ── Step 3: Offline fallback (stale cache) ────────────────────────────
-        try {
-          const raw = await AsyncStorage.getItem('user')
-          if (raw) setUser(JSON.parse(raw) as User)
-        } catch { /* ignore */ }
-
+        const raw = await AsyncStorage.getItem(STORAGE_KEY)
+        if (raw) setUser(JSON.parse(raw) as UserSession)
+      } catch (e) {
+        console.warn('[AuthContext] restore failed:', e)
       } finally {
         setLoading(false)
       }
     }
-    init()
+    restore()
   }, [])
 
-  // OTP login — sends deviceId so backend binds this device → user
-  const loginWithOTP = useCallback(async (
-    mobile: string, otp: string, name?: string,
-  ): Promise<void> => {
-    const did = await getDeviceId()
-    const res = await fetch(apiUrl('/api/auth/verify-otp'), {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ mobile, otp, name, deviceId: did }),
-    })
-    if (!res.ok) {
-      const err = await res.json() as { message?: string }
-      throw new Error(err.message ?? 'OTP verification failed')
-    }
-    const data = await res.json() as { token: string; user: User }
-    await AsyncStorage.setItem('token', data.token)
-    await AsyncStorage.setItem('user',  JSON.stringify(data.user))
-    setDeviceId(did)
-    setUser(data.user)
-  }, [])
-
-  // Silent device login (called from screens if needed)
-  const loginWithDevice = useCallback(async (): Promise<boolean> => {
+  // ── Step 1: Send OTP via Firebase ────────────────────────────────────────
+  // Firebase directly sends the SMS — no backend involved here
+  const sendOTP = async (mobile: string) => {
     try {
-      const did = await getDeviceId()
-      const res = await fetch(apiUrl('/api/auth/device-login'), {
+      // Firebase requires +91 prefix for India
+      const result = await auth().signInWithPhoneNumber(`+91${mobile}`)
+      setConfirmation(result)
+      setPendingMobile(mobile)
+    } catch (e: any) {
+      console.error('[sendOTP] Firebase error:', e)
+
+      // Friendly error messages
+      if (e.code === 'auth/invalid-phone-number') {
+        throw new Error('Invalid phone number. Please check and try again.')
+      }
+      if (e.code === 'auth/too-many-requests') {
+        throw new Error('Too many attempts. Please try again later.')
+      }
+      if (e.code === 'auth/quota-exceeded') {
+        throw new Error('SMS quota exceeded. Please try again tomorrow.')
+      }
+      throw new Error(e.message ?? 'Failed to send OTP')
+    }
+  }
+
+  // ── Step 2: Verify OTP + register/login on your backend ──────────────────
+  // Firebase verifies the OTP, then your backend creates/fetches the user
+  const loginWithOTP = async (otp: string, name?: string) => {
+    if (!confirmation) throw new Error('No OTP request found. Please request OTP again.')
+
+    try {
+      // 1. Verify OTP with Firebase
+      await confirmation.confirm(otp)
+
+      // 2. Now register/login on your backend to get JWT
+      const res = await fetch(apiUrl('/api/auth/verify-firebase'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ deviceId: did }),
+        body:    JSON.stringify({ mobile: pendingMobile, name }),
       })
-      if (!res.ok) return false
-      const data = await res.json() as { token: string; user: User }
-      await AsyncStorage.setItem('token', data.token)
-      await AsyncStorage.setItem('user',  JSON.stringify(data.user))
-      setUser(data.user)
-      return true
-    } catch { return false }
-  }, [])
 
-  const logout = useCallback(async (): Promise<void> => {
-    await clearAuth()
+      const data = await res.json() as {
+        token:    string
+        username: string
+        message?: string
+      }
+
+      if (!res.ok) throw new Error(data.message ?? 'Login failed')
+
+      const session: UserSession = {
+        mobile:   pendingMobile,
+        username: data.username || name || pendingMobile,
+        token:    data.token,
+      }
+
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+      setUser(session)
+      setConfirmation(null)
+      setPendingMobile('')
+
+    } catch (e: any) {
+      console.error('[loginWithOTP] error:', e)
+
+      if (e.code === 'auth/invalid-verification-code') {
+        throw new Error('Invalid OTP. Please check and try again.')
+      }
+      if (e.code === 'auth/code-expired') {
+        throw new Error('OTP expired. Please request a new one.')
+      }
+      throw new Error(e.message ?? 'Verification failed')
+    }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  const logout = async () => {
+    try {
+      await auth().signOut()
+    } catch (_) {}
+    await AsyncStorage.removeItem(STORAGE_KEY)
     setUser(null)
-  }, [])
+  }
 
   return (
-    <AuthContext.Provider value={{ user, loading, deviceId, loginWithOTP, loginWithDevice, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      sendOTP,
+      loginWithOTP,
+      logout,
+      confirmation,
+    }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth(): AuthContextValue {
+export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
   return ctx

@@ -70,9 +70,10 @@ const dotStyles = StyleSheet.create({
 
 // ── Summary Tab ───────────────────────────────────────────────────────────────
 function SummaryTab({ match }: { match: Match }) {
-  const { innings1: i1, innings2: i2, tossWinner, battingFirst, overs, result, status } = match
+  const { innings1, innings2, tossWinner, battingFirst, overs, result, status } = match
   const isLive = status === 'innings1' || status === 'innings2'
-  const target = i1.runs + 1
+  // FIX: use optional chaining + nullish coalescing instead of direct i1.runs
+  const target = (innings1?.runs ?? 0) + 1
 
   const quickStats = [
     { label: 'Format',        value: `${overs} Overs` },
@@ -82,31 +83,34 @@ function SummaryTab({ match }: { match: Match }) {
     ...(result ? [{ label: 'Result', value: result, highlight: true }] : []),
   ]
 
-  const allBat = [...(i1.battingStats ?? []), ...(i2.battingStats ?? [])]
+  // FIX: use optional chaining on innings1/innings2
+  const allBat = [...(innings1?.battingStats ?? []), ...(innings2?.battingStats ?? [])]
     .filter(p => p.runs > 0).sort((a, b) => b.runs - a.runs)
   const topBatter = allBat[0]
-  const allBowl = [...(i1.bowlingStats ?? []), ...(i2.bowlingStats ?? [])]
+  const allBowl = [...(innings1?.bowlingStats ?? []), ...(innings2?.bowlingStats ?? [])]
     .filter(p => p.wickets > 0).sort((a, b) => b.wickets - a.wickets)
   const topBowler = allBowl[0]
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
       {/* Score boxes */}
-      {[i1, i2].map((inn, idx) => {
-        if (!inn.battingTeam) return null
-        const isCurrent = isLive && ((status === 'innings1' && idx === 0) || (status === 'innings2' && idx === 1))
-        return (
-          <View key={idx} style={[tabStyles.scoreRow, idx === 0 && { borderBottomWidth: 1, borderBottomColor: T.border }]}>
-            <Text style={[tabStyles.scoreTeam, isCurrent && { color: T.text }]}>{inn.battingTeam}</Text>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[tabStyles.scoreRuns, isCurrent && { color: T.gold, fontSize: 28 }]}>
-                {inn.runs}/{inn.wickets}
-              </Text>
-              <Text style={tabStyles.scoreOvers}>({fmtOvers(inn.balls)})</Text>
+      {/* FIX: use type predicate filter so TypeScript knows inn is Innings (not undefined) */}
+      {([innings1, innings2] as (Innings | undefined)[])
+        .filter((inn): inn is Innings => !!inn?.battingTeam)
+        .map((inn, idx) => {
+          const isCurrent = isLive && ((status === 'innings1' && idx === 0) || (status === 'innings2' && idx === 1))
+          return (
+            <View key={idx} style={[tabStyles.scoreRow, idx === 0 && { borderBottomWidth: 1, borderBottomColor: T.border }]}>
+              <Text style={[tabStyles.scoreTeam, isCurrent && { color: T.text }]}>{inn.battingTeam}</Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[tabStyles.scoreRuns, isCurrent && { color: T.gold, fontSize: 28 }]}>
+                  {inn.runs}/{inn.wickets}
+                </Text>
+                <Text style={tabStyles.scoreOvers}>({fmtOvers(inn.ballByBall?.length ?? 0)})</Text>
+              </View>
             </View>
-          </View>
-        )
-      })}
+          )
+        })}
 
       {/* Result */}
       {result ? (
@@ -129,7 +133,8 @@ function SummaryTab({ match }: { match: Match }) {
           <Text style={tabStyles.perfRole}>🏏 TOP SCORER</Text>
           <Text style={tabStyles.perfName}>{topBatter.name}</Text>
           <Text style={tabStyles.perfValue}>
-            {topBatter.runs}{topBatter.isOut ? '' : '*'} ({topBatter.balls}b) — SR: {strikeRate(topBatter.runs, topBatter.balls)}
+            {/* FIX: nullish coalescing on optional numeric fields */}
+            {topBatter.runs}{topBatter.isOut ? '' : '*'} ({topBatter.balls ?? 0}b) — SR: {strikeRate(topBatter.runs ?? 0, topBatter.balls ?? 0)}
           </Text>
         </View>
       )}
@@ -138,7 +143,8 @@ function SummaryTab({ match }: { match: Match }) {
           <Text style={[tabStyles.perfRole, { color: T.purple }]}>🎳 TOP BOWLER</Text>
           <Text style={tabStyles.perfName}>{topBowler.name}</Text>
           <Text style={tabStyles.perfValue}>
-            {topBowler.wickets}/{topBowler.runs} — Eco: {economy(topBowler.runs, topBowler.balls)}
+            {/* FIX: nullish coalescing on optional numeric fields */}
+            {topBowler.wickets}/{topBowler.runs} — Eco: {economy(topBowler.runs ?? 0, topBowler.balls ?? 0)}
           </Text>
         </View>
       )}
@@ -160,7 +166,7 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={scStyles.totalScore}>{inn.runs}/{inn.wickets}</Text>
-          <Text style={scStyles.totalOvers}>({fmtOvers(inn.balls)} ov)</Text>
+          <Text style={scStyles.totalOvers}>({fmtOvers(inn.ballByBall?.length ?? 0)} ov)</Text>
         </View>
       </Pressable>
 
@@ -176,18 +182,19 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
             <View key={i} style={[scStyles.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.018)' }]}>
               <Text style={[scStyles.td, { flex: 2, textAlign: 'left', color: p.runs === highScore ? T.gold : T.text, fontWeight: p.runs === highScore ? '700' : '400' }]} numberOfLines={1}>{p.name}</Text>
               <Text style={[scStyles.td, { color: p.runs >= 50 ? T.gold : T.text, fontWeight: '700' }]}>{p.runs}{p.isOut ? '' : '*'}</Text>
-              <Text style={scStyles.td}>{p.balls}</Text>
-              <Text style={[scStyles.td, { color: T.green }]}>{p.fours}</Text>
-              <Text style={[scStyles.td, { color: T.purple }]}>{p.sixes}</Text>
-              <Text style={[scStyles.td, { color: parseFloat(strikeRate(p.runs, p.balls)) >= 150 ? T.green : T.text2 }]}>
-                {strikeRate(p.runs, p.balls)}
+              <Text style={scStyles.td}>{p.balls ?? 0}</Text>
+              <Text style={[scStyles.td, { color: T.green }]}>{p.fours ?? 0}</Text>
+              <Text style={[scStyles.td, { color: T.purple }]}>{p.sixes ?? 0}</Text>
+              {/* FIX: nullish coalescing on p.runs and p.balls */}
+              <Text style={[scStyles.td, { color: parseFloat(strikeRate(p.runs ?? 0, p.balls ?? 0)) >= 150 ? T.green : T.text2 }]}>
+                {strikeRate(p.runs ?? 0, p.balls ?? 0)}
               </Text>
             </View>
           ))}
           <View style={scStyles.totalRow}>
             <Text style={[scStyles.td, { flex: 3, textAlign: 'left', color: T.gold, fontWeight: '800' }]}>TOTAL</Text>
             <Text style={[scStyles.td, { flex: 3, textAlign: 'right', color: T.gold, fontSize: 15, fontWeight: '800' }]}>
-              {inn.runs}/{inn.wickets} ({fmtOvers(inn.balls)})
+              {inn.runs}/{inn.wickets} ({fmtOvers(inn.ballByBall?.length ?? 0)})
             </Text>
           </View>
 
@@ -200,11 +207,13 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
           {(inn.bowlingStats ?? []).map((b, i) => (
             <View key={i} style={[scStyles.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.018)' }]}>
               <Text style={[scStyles.td, { flex: 2, textAlign: 'left', color: b.wickets >= 3 ? T.purple : T.text }]} numberOfLines={1}>{b.name}</Text>
-              <Text style={scStyles.td}>{fmtOvers(b.balls)}</Text>
-              <Text style={scStyles.td}>{b.runs}</Text>
-              <Text style={[scStyles.td, { color: b.wickets > 0 ? T.purple : T.muted, fontWeight: '700' }]}>{b.wickets}</Text>
-              <Text style={[scStyles.td, { color: parseFloat(economy(b.runs, b.balls)) <= 6 ? T.green : T.text2 }]}>
-                {economy(b.runs, b.balls)}
+              {/* FIX: nullish coalescing on b.balls */}
+              <Text style={scStyles.td}>{fmtOvers(b.balls ?? 0)}</Text>
+              <Text style={scStyles.td}>{b.runs ?? 0}</Text>
+              <Text style={[scStyles.td, { color: b.wickets > 0 ? T.purple : T.muted, fontWeight: '700' }]}>{b.wickets ?? 0}</Text>
+              {/* FIX: nullish coalescing on b.runs and b.balls */}
+              <Text style={[scStyles.td, { color: parseFloat(economy(b.runs ?? 0, b.balls ?? 0)) <= 6 ? T.green : T.text2 }]}>
+                {economy(b.runs ?? 0, b.balls ?? 0)}
               </Text>
             </View>
           ))}
@@ -217,8 +226,9 @@ function InningsCard({ inn, idx }: { inn: Innings; idx: number }) {
 function ScorecardTab({ match }: { match: Match }) {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      {[match.innings1, match.innings2]
-        .filter(i => i.battingTeam)
+      {/* FIX: type predicate filter so TypeScript knows inn is Innings (not undefined) */}
+      {([match.innings1, match.innings2] as (Innings | undefined)[])
+        .filter((inn): inn is Innings => !!inn?.battingTeam)
         .map((inn, idx) => <InningsCard key={idx} inn={inn} idx={idx} />)}
     </ScrollView>
   )
@@ -226,7 +236,9 @@ function ScorecardTab({ match }: { match: Match }) {
 
 // ── Commentary Tab ────────────────────────────────────────────────────────────
 function CommentaryTab({ match }: { match: Match }) {
-  const innings = [match.innings2, match.innings1].filter(i => i.battingTeam && (i.ballByBall?.length ?? 0) > 0)
+  // FIX: type predicate filter so TypeScript knows i is Innings (not undefined)
+  const innings = ([match.innings2, match.innings1] as (Innings | undefined)[])
+    .filter((i): i is Innings => !!i?.battingTeam && (i.ballByBall?.length ?? 0) > 0)
   const [activeInn, setActiveInn] = useState(0)
   const current = innings[activeInn]
 
@@ -261,8 +273,8 @@ function CommentaryTab({ match }: { match: Match }) {
         <View style={comStyles.innSwitcher}>
           {innings.map((inn, i) => (
             <Pressable
-
-              android_ripple={{ color: "rgba(255,255,255,0.12)" }}              key={i} onPress={() => setActiveInn(i)}
+              android_ripple={{ color: "rgba(255,255,255,0.12)" }}
+              key={i} onPress={() => setActiveInn(i)}
               style={[comStyles.innTab, activeInn === i && comStyles.innTabActive]}
             >
               <Text style={[comStyles.innTabText, activeInn === i && { color: T.gold }]}>{inn.battingTeam}</Text>
@@ -374,21 +386,23 @@ export default function MatchDetailsScreen() {
               </View>
               <Text style={styles.overText}>{match.overs} ov</Text>
             </View>
-            {[match.innings1, match.innings2].map((inn, idx) => {
-              if (!inn.battingTeam) return null
-              const isCurrent = match.isLive && ((match.status === 'innings1' && idx === 0) || (match.status === 'innings2' && idx === 1))
-              return (
-                <View key={idx} style={styles.innRow}>
-                  <Text style={[styles.innTeam, isCurrent && { color: T.text }]}>{inn.battingTeam}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                    <Text style={[styles.innScore, isCurrent && { color: T.gold, fontSize: 28 }]}>
-                      {inn.runs}/{inn.wickets}
-                    </Text>
-                    <Text style={styles.innOvers}>({fmtOvers(inn.balls)})</Text>
+            {/* FIX: type predicate filter so TypeScript knows inn is Innings (not undefined) */}
+            {([match.innings1, match.innings2] as (Innings | undefined)[])
+              .filter((inn): inn is Innings => !!inn?.battingTeam)
+              .map((inn, idx) => {
+                const isCurrent = match.isLive && ((match.status === 'innings1' && idx === 0) || (match.status === 'innings2' && idx === 1))
+                return (
+                  <View key={idx} style={styles.innRow}>
+                    <Text style={[styles.innTeam, isCurrent && { color: T.text }]}>{inn.battingTeam}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                      <Text style={[styles.innScore, isCurrent && { color: T.gold, fontSize: 28 }]}>
+                        {inn.runs}/{inn.wickets}
+                      </Text>
+                      <Text style={styles.innOvers}>({fmtOvers(inn.ballByBall?.length ?? 0)})</Text>
+                    </View>
                   </View>
-                </View>
-              )
-            })}
+                )
+              })}
             {match.result ? (
               <Text style={{ fontSize: 12, color: T.gold, fontWeight: '600', marginTop: 8 }}>{match.result}</Text>
             ) : null}

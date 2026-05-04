@@ -22,7 +22,7 @@ import { useLiveScores }  from '../hooks/useLiveScores'
 import { useFavorites }   from '../hooks/useFavorites'
 import { FavoriteToggle } from '../components/FavoriteToggle'
 import { apiUrl }         from '../services/api'
-import type { Match, BattingStats, BowlingStats, RootStackParamList } from '../types'
+import type { Match, BattingStats, BowlingStats, Innings, RootStackParamList } from '../types'
 
 type Nav = NativeStackNavigationProp<RootStackParamList>
 
@@ -41,16 +41,34 @@ function timeAgo(dateStr?: string): string {
 function fmtOvers(balls: number): string { return `${Math.floor(balls / 6)}.${balls % 6}` }
 function sr(runs: number, balls: number)  { return balls > 0 ? ((runs / balls) * 100).toFixed(0) : '0' }
 function eco(runs: number, balls: number) { return balls > 0 ? ((runs / balls) * 6).toFixed(1) : '0.0' }
+// FIX: accept string | number so callers can pass either without casting
 function pad(s: string | number, n: number): string { return String(s).padEnd(n, ' ').slice(0, n) }
 function rpad(s: string | number, n: number): string { return String(s).padStart(n, ' ').slice(-n) }
 
+// FIX: compute CRR from balls count (inn.overs and inn.crr don't exist on Innings)
+function computeCRR(runs: number, balls: number): string {
+  return balls > 0 ? ((runs / balls) * 6).toFixed(2) : '0.00'
+}
+
+// FIX: get ball count from innings — ballByBall array length if present, else balls field
+function getBalls(inn: Innings): number {
+  if (Array.isArray(inn.ballByBall)) return inn.ballByBall.length
+  if (typeof inn.balls === 'number') return inn.balls
+  return 0
+}
+
 // ── Build rich text share card ────────────────────────────────────────────────
 function buildShareText(match: Match): string {
-  const inn1 = match.innings1
-  const inn2 = match.innings2
+  // FIX: guard against undefined innings (Match type has them as optional)
+  const inn1 = match.innings1 ?? { battingStats: [], bowlingStats: [] }
+  const inn2 = match.innings2 ?? { battingStats: [], bowlingStats: [] }
   const t1   = inn1.battingTeam || match.team1
   const t2   = inn2.battingTeam || match.team2
   const divider = '─────────────────────────────'
+
+  // FIX: compute overs from balls count instead of inn.overs (doesn't exist)
+  const inn1Balls = getBalls(inn1)
+  const inn2Balls = getBalls(inn2)
 
   const lines: string[] = []
   lines.push('🏏 CrickyWorld Match Scorecard')
@@ -61,30 +79,33 @@ function buildShareText(match: Match): string {
 
   // ── Innings 1 score ────────────────────────────────────────────────────────
   lines.push(`\n🟥  ${t1.toUpperCase()}`)
-  lines.push(`    ${inn1.runs}/${inn1.wickets}  (${inn1.overs} ov)  CRR: ${inn1.crr}`)
+  // FIX: compute overs and CRR from ball count instead of inn1.overs / inn1.crr
+  lines.push(`    ${inn1.runs}/${inn1.wickets}  (${fmtOvers(inn1Balls)} ov)  CRR: ${computeCRR(inn1.runs ?? 0, inn1Balls)}`)
 
   // Top 3 batsmen — innings 1
   const bat1 = [...(inn1.battingStats ?? [])]
-    .sort((a, b) => b.runs - a.runs)
-    .slice(0, 3)
+  .sort((a, b) => (b.runs ?? 0) - (a.runs ?? 0))
+  .slice(0, 3)
   if (bat1.length > 0) {
     lines.push(`\n  🏏 Batting`)
     lines.push(`  ${'Player'.padEnd(16)} ${'R'.padStart(4)} ${'B'.padStart(4)} ${'SR'.padStart(6)}`)
     bat1.forEach((b: BattingStats) => {
-      const notOut = !b.isOut ? '*' : ' '
-      lines.push(`  ${pad(b.name, 16)} ${rpad(b.runs + notOut, 4)} ${rpad(b.balls, 4)} ${rpad(sr(b.runs, b.balls), 6)}`)
+      const notOut = !b.isOut ? '*' : ''
+      // FIX: b.name may be undefined — use ?? '' fallback; b.balls may be undefined — use ?? 0
+      lines.push(`  ${pad(b.name ?? '', 16)} ${rpad(`${b.runs}${notOut}`, 4)} ${rpad(b.balls ?? 0, 4)} ${rpad(sr(b.runs ?? 0, b.balls ?? 0), 6)}`)
     })
   }
 
-  // Top 3 bowlers vs innings 1 batsmen (bowl in inn2 → they bowled at inn1 batting team)
+  // Top 3 bowlers vs innings 1 batsmen (inn2 bowling stats)
   const bowl1 = [...(inn2.bowlingStats ?? [])]
-    .sort((a, b) => b.wickets - a.wickets || (a.runs / Math.max(a.balls, 1)) - (b.runs / Math.max(b.balls, 1)))
+    .sort((a, b) => b.wickets - a.wickets || (a.runs / Math.max(a.balls ?? 1, 1)) - (b.runs / Math.max(b.balls ?? 1, 1)))
     .slice(0, 3)
   if (bowl1.length > 0) {
     lines.push(`\n  🎳 Bowling`)
     lines.push(`  ${'Player'.padEnd(16)} ${'O'.padStart(5)} ${'W'.padStart(3)} ${'Eco'.padStart(5)}`)
     bowl1.forEach((b: BowlingStats) => {
-      lines.push(`  ${pad(b.name, 16)} ${rpad(fmtOvers(b.balls), 5)} ${rpad(b.wickets, 3)} ${rpad(eco(b.runs, b.balls), 5)}`)
+      // FIX: b.name may be undefined — use ?? '' fallback; b.balls may be undefined — use ?? 0
+      lines.push(`  ${pad(b.name ?? '', 16)} ${rpad(fmtOvers(b.balls ?? 0), 5)} ${rpad(b.wickets ?? 0, 3)} ${rpad(eco(Number(b.runs ?? 0), Number(b.balls ?? 0)), 5)}`)
     })
   }
 
@@ -92,30 +113,33 @@ function buildShareText(match: Match): string {
 
   // ── Innings 2 score ────────────────────────────────────────────────────────
   lines.push(`\n🟦  ${t2.toUpperCase()}`)
-  lines.push(`    ${inn2.runs}/${inn2.wickets}  (${inn2.overs} ov)  CRR: ${inn2.crr}`)
+  // FIX: compute overs and CRR from ball count
+  lines.push(`    ${inn2.runs}/${inn2.wickets}  (${fmtOvers(inn2Balls)} ov)  CRR: ${computeCRR(inn1.runs ?? 0, inn1Balls)}`)
 
   // Top 3 batsmen — innings 2
   const bat2 = [...(inn2.battingStats ?? [])]
-    .sort((a, b) => b.runs - a.runs)
-    .slice(0, 3)
+  .sort((a, b) => (b.runs ?? 0) - (a.runs ?? 0))
+  .slice(0, 3)
   if (bat2.length > 0) {
     lines.push(`\n  🏏 Batting`)
     lines.push(`  ${'Player'.padEnd(16)} ${'R'.padStart(4)} ${'B'.padStart(4)} ${'SR'.padStart(6)}`)
     bat2.forEach((b: BattingStats) => {
-      const notOut = !b.isOut ? '*' : ' '
-      lines.push(`  ${pad(b.name, 16)} ${rpad(b.runs + notOut, 4)} ${rpad(b.balls, 4)} ${rpad(sr(b.runs, b.balls), 6)}`)
+      const notOut = !b.isOut ? '*' : ''
+      // FIX: b.name may be undefined — use ?? '' fallback; b.balls may be undefined — use ?? 0
+      lines.push(`  ${pad(b.name ?? '', 16)} ${rpad(`${b.runs}${notOut}`, 4)} ${rpad(b.balls ?? 0, 4)} ${rpad(sr(b.runs ?? 0, b.balls ?? 0), 6)}`)
     })
   }
 
-  // Top 3 bowlers — innings 2 bowling = inn1 bowling stats
+  // Top 3 bowlers — bowling vs inn2 = inn1 bowling stats
   const bowl2 = [...(inn1.bowlingStats ?? [])]
-    .sort((a, b) => b.wickets - a.wickets || (a.runs / Math.max(a.balls, 1)) - (b.runs / Math.max(b.balls, 1)))
+    .sort((a, b) => b.wickets - a.wickets || (a.runs / Math.max(a.balls ?? 1, 1)) - (b.runs / Math.max(b.balls ?? 1, 1)))
     .slice(0, 3)
   if (bowl2.length > 0) {
     lines.push(`\n  🎳 Bowling`)
     lines.push(`  ${'Player'.padEnd(16)} ${'O'.padStart(5)} ${'W'.padStart(3)} ${'Eco'.padStart(5)}`)
     bowl2.forEach((b: BowlingStats) => {
-      lines.push(`  ${pad(b.name, 16)} ${rpad(fmtOvers(b.balls), 5)} ${rpad(b.wickets, 3)} ${rpad(eco(b.runs, b.balls), 5)}`)
+      // FIX: b.name may be undefined — use ?? '' fallback; b.balls may be undefined — use ?? 0
+      lines.push(`  ${pad(b.name ?? '', 16)} ${rpad(fmtOvers(b.balls ?? 0), 5)} ${rpad(b.wickets ?? 0, 3)} ${rpad(eco(Number(b.runs ?? 0), Number(b.balls ?? 0)), 5)}`)
     })
   }
 
@@ -153,9 +177,13 @@ interface MatchCardProps {
 }
 
 function MatchCard({ match, onOpen, onDetails, onDelete, onShare, deleting }: MatchCardProps) {
-  const st     = STATUS_CONFIG[match.status] ?? STATUS_CONFIG.setup
+  const st     = STATUS_CONFIG[match.status ?? 'setup'] ?? STATUS_CONFIG.setup
   const isLive = match.status === 'innings1' || match.status === 'innings2'
   const isDone = match.status === 'completed'
+
+  // FIX: guard against undefined innings
+  const inn1Balls = match.innings1 ? getBalls(match.innings1) : 0
+  const inn2Balls = match.innings2 ? getBalls(match.innings2) : 0
 
   return (
     <Pressable
@@ -175,8 +203,9 @@ function MatchCard({ match, onOpen, onDetails, onDelete, onShare, deleting }: Ma
               <FavoriteToggle team={match.team2} size={15} />
             </View>
           </View>
+          {/* FIX: match.battingFirst may be undefined — use ?? '' fallback */}
           <Text style={styles.metaText}>
-            {match.overs} overs · {match.battingFirst} batted first
+            {match.overs} overs · {match.battingFirst ?? ''} batted first
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
@@ -185,16 +214,22 @@ function MatchCard({ match, onOpen, onDetails, onDelete, onShare, deleting }: Ma
       </View>
 
       {/* Scores */}
+      {/* FIX: use type predicate filter so inn is Innings, not Innings | undefined */}
       <View style={styles.scoresRow}>
-        {[match.innings1, match.innings2].map((inn, i) => (
-          <View key={i} style={styles.scoreBox}>
-            <Text style={styles.scoreTeam} numberOfLines={1}>
-              {inn.battingTeam || (i === 0 ? match.team1 : match.team2)}
-            </Text>
-            <Text style={styles.scoreRuns}>{inn.runs}/{inn.wickets}</Text>
-            <Text style={styles.scoreOvers}>({inn.overs} ov)</Text>
-          </View>
-        ))}
+        {([match.innings1, match.innings2] as (Innings | undefined)[])
+          .map((inn, i) => {
+            const balls = inn ? getBalls(inn) : 0
+            return (
+              <View key={i} style={styles.scoreBox}>
+                <Text style={styles.scoreTeam} numberOfLines={1}>
+                  {inn?.battingTeam || (i === 0 ? match.team1 : match.team2)}
+                </Text>
+                <Text style={styles.scoreRuns}>{inn?.runs ?? 0}/{inn?.wickets ?? 0}</Text>
+                {/* FIX: compute overs from ball count, not inn.overs */}
+                <Text style={styles.scoreOvers}>({fmtOvers(balls)} ov)</Text>
+              </View>
+            )
+          })}
       </View>
 
       {/* Result */}
@@ -226,7 +261,7 @@ function MatchCard({ match, onOpen, onDetails, onDelete, onShare, deleting }: Ma
           </Pressable>
           {/* Delete */}
           <Pressable android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
-            onPress={() => onDelete(match.id)} disabled={deleting === match.id}
+            onPress={() => onDelete(match.id ?? '')} disabled={deleting === match.id}
             style={styles.deleteBtn}>
             <Text style={styles.deleteBtnText}>{deleting === match.id ? '⏳' : '🗑'}</Text>
           </Pressable>
@@ -263,11 +298,15 @@ export default function OpenMatchScreen() {
   })
 
   const handleOpen = (match: Match) => {
-    if (match.isCompleted) navigation.navigate('MatchReport', { id: match.id })
-    else navigation.navigate('Scoring', { id: match.id })
+    // FIX: match.id may be undefined — use non-null assertion or fallback
+    // The id prop on RootStackParamList requires string, so guard with || ''
+    if (match.isCompleted) navigation.navigate('MatchReport', { id: match.id ?? '' })
+    else navigation.navigate('Scoring', { id: match.id ?? '' })
   }
 
-  const handleDetails = (match: Match) => navigation.navigate('MatchDetails', { id: match.id })
+  const handleDetails = (match: Match) =>
+    // FIX: same guard
+    navigation.navigate('MatchDetails', { id: match.id ?? '' })
 
   const handleDelete = (id: string) => {
     Alert.alert('Delete Match', 'Are you sure?', [
@@ -359,7 +398,8 @@ export default function OpenMatchScreen() {
       ) : (
         <FlatList
           data={sorted}
-          keyExtractor={m => m.id}
+          // FIX: keyExtractor must return string — use fallback for undefined id
+          keyExtractor={m => m.id ?? m._id ?? String(Math.random())}
           renderItem={({ item }) => (
             <MatchCard
               match={item}

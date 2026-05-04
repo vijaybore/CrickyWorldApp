@@ -185,7 +185,8 @@ function buildShareText(match: MatchData): string {
 export default function MatchReportScreen() {
   const route      = useRoute<Route>()
   const navigation = useNavigation<Nav>()
-  const { id }     = route.params
+  // FIX: RootStackParamList uses 'id', not 'matchId'
+  const matchId = route.params?.id
 
   const [match,   setMatch]   = useState<MatchData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -195,14 +196,14 @@ export default function MatchReportScreen() {
       try {
         const token = await AsyncStorage.getItem('token').catch(() => null)
         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
-        const res  = await fetch(apiUrl(`/api/matches/${id}`), { headers })
+        const res = await fetch(apiUrl(`/api/matches/${matchId}`), { headers })
         const data = await res.json()
         setMatch(data as MatchData)
       } catch { /* show error state */ }
       finally   { setLoading(false) }
     }
     load()
-  }, [id])
+  }, [matchId])
 
   const handleShare = async () => {
     if (!match) return

@@ -1,108 +1,150 @@
-// src/types/index.ts
-
-export type { RootStackParamList } from './navigation'
-
-export type PlayerRole = 'batsman' | 'bowler' | 'allrounder' | 'wk-batsman'
-
-export interface Player {
-  _id:               string
-  name:              string
-  photoUrl?:         string
-  role:              PlayerRole
-  battingStyle?:     string
-  bowlingStyle?:     string
-  jerseyNumber?:     string
-  totalMatches?:     number
-  totalRuns?:        number
-  totalBallsFaced?:  number
-  totalFours?:       number
-  totalSixes?:       number
-  totalWickets?:     number
-  totalBallsBowled?: number
-  totalRunsConceded?:number
-  highestScore?:     number
-  timesOut?:         number
-  totalFifties?:     number
-  totalHundreds?:    number
-  totalDotBalls?:    number
-  totalWides?:       number
-  fiveWickets?:      number
-  bestBowlingW?:     number
-  bestBowlingR?:     number
+export type RootStackParamList = {
+  Home:          undefined
+  NewMatch:      undefined
+  OpenMatch:     { id?: string } | undefined
+  Scoring:       { id: string }
+  MatchDetails:  { id: string }
+  MatchReport:   { id: string }
+  Players:       undefined
+  ManagePlayers: undefined
+  Tournaments:   undefined
+  Records:       undefined
+  Settings:      undefined
 }
 
-export interface User {
-  id:       string
-  name?:    string
-  mobile?:  string
-  email?:   string
+export type PlayerRole =
+  | 'Batsman' | 'Bowler' | 'All-Rounder' | 'Wicket-Keeper'
+  | 'batsman' | 'bowler' | 'allrounder'  | 'wk-batsman'
+
+export interface Player {
+  _id:                string
+  id?:                string
+  name:               string
+  role?:              PlayerRole
+  mobile?:            string
+  avatar?:            string
+  photoUrl?:          string
+  jerseyNumber?:      number | string
+  battingStyle?:      string
+  bowlingStyle?:      string
+  totalMatches?:      number
+  totalRuns?:         number
+  totalWickets?:      number
+  totalBallsFaced?:   number
+  totalBallsBowled?:  number
+  totalRunsConceded?: number
+  totalFours?:        number
+  totalSixes?:        number
+  totalFifties?:      number
+  totalHundreds?:     number
+  totalWides?:        number
+  highestScore?:      number
+  bestBowlingW?:      number
+  bestBowlingR?:      number
+  fiveWickets?:       number
+  timesOut?:          number
+  matches?:           number
+  runs?:              number
+  wickets?:           number
+  average?:           number
 }
 
 export interface Ball {
-  runs:          number
-  isWicket:      boolean
-  isWide:        boolean
-  isNoBall:      boolean
-  batsmanName?:  string
-  bowlerName?:   string
-  wicketType?:   string
-  assistPlayer?: string
-  extraRuns?:    number
+  ballNumber:   number
+  overNumber:   number
+  runs:         number
+  extras?:      number
+  extraType?:   'WD' | 'NB' | 'LB' | 'B' | null
+  isWicket:     boolean
+  isWide?:      boolean
+  isNoBall?:    boolean
+  wicketType?:  string
+  batsmanId?:   string
+  bowlerId?:    string
+  batsmanName?: string
+  bowlerName?:  string
+  outcome?:     string
 }
 
 export interface BattingStats {
-  name:          string
-  runs:          number
-  balls:         number
-  fours:         number
-  sixes:         number
-  isOut:         boolean
-  wicketType?:   string
-  bowlerName?:   string
-  assistPlayer?: string
+  playerId?:   string
+  playerName?: string
+  name?:       string
+  runs:        number
+  balls:       number
+  fours:       number
+  sixes:       number
+  isOut:       boolean
+  dismissal?:  string
+  strikeRate:  number
+  notOut?:     boolean
 }
 
 export interface BowlingStats {
-  name:     string
-  overs:    number
-  balls:    number
-  runs:     number
-  wickets:  number
-  wides:    number
-  noBalls:  number
+  playerId?:   string
+  playerName?: string
+  name?:       string
+  overs:       number
+  balls:       number
+  maidens:     number
+  runs:        number
+  wickets:     number
+  economy:     number
+  wides:       number
+  noBalls:     number
 }
 
 export interface Innings {
-  battingTeam:  string
-  runs:         number
-  wickets:      number
-  balls:        number
-  overs:        string
-  crr:          string
-  ballByBall:   Ball[]
-  battingStats: BattingStats[]
-  bowlingStats: BowlingStats[]
+  inningsNumber?: 1 | 2
+  battingTeam?:   string
+  bowlingTeam?:   string
+  runs?:          number
+  wickets?:       number
+  totalRuns?:     number
+  totalWickets?:  number
+  totalOvers?:    number
+  overs?:         string
+  crr?:           string
+  balls?:         Ball[]
+  ballByBall?:    Ball[]
+  battingStats?:  BattingStats[]
+  bowlingStats?:  BowlingStats[]
+  extras?:        { wides: number; noBalls: number; legByes: number; byes: number; total: number }
 }
 
+export type MatchFormat  = 'T20' | 'ODI' | 'Test' | 'Custom'
+export type TossDecision = 'bat' | 'bowl'
+export type MatchStatus  = 'setup' | 'toss' | 'innings1' | 'innings2' | 'completed'
+
 export interface Match {
-  _id:            string
-  id:             string
-  createdBy?:     string
-  team1:          string
-  team2:          string
-  team1Players:   string[]
-  team2Players:   string[]
-  overs:          number
-  status:         'setup' | 'innings1' | 'innings2' | 'completed'
-  tossWinner:     string
-  battingFirst:   string
-  result:         string
-  innings1:       Innings
-  innings2:       Innings
-  isLive:         boolean
-  isCompleted:    boolean
-  createdAt?:     string
-  updatedAt?:     string
-  tournamentId?:  string | null
-  tournamentName?:string | null
+  _id:             string
+  id?:             string
+  title?:          string
+  team1:           string
+  team2:           string
+  format:          MatchFormat
+  overs:           number
+  venue?:          string
+  date?:           string
+  tossWinner?:     string
+  tossDecision?:   TossDecision
+  battingFirst?:   string
+  isCompleted:     boolean
+  isLive?:         boolean
+  status?:         MatchStatus | string
+  result?:         string
+  innings1?:       Innings
+  innings2?:       Innings
+  innings?:        Innings[]
+  createdAt?:      string
+  updatedAt?:      string
+  realMatchId?:    string
+  tournamentId?:   string | null
+  tournamentName?: string | null
+}
+
+export interface UserSession {
+  mobile:   string
+  username: string
+  token:    string
 }

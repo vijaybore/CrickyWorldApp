@@ -53,9 +53,12 @@ function derive(p: Player) {
 
 // ── Avatar ────────────────────────────────────────────────────────────────────
 function Avatar({ player, size=48 }: { player: Player; size?: number }) {
-  const ini = (player.name||'?').split(' ').map((w:string)=>w[0]).join('').toUpperCase().slice(0,2)
-  const bg  = BG_COLORS[(player.name?.charCodeAt(0)??0) % BG_COLORS.length]
-  const rc  = ROLE_COLOR[player.role] || '#555'
+  // FIX: w[0] returns string | undefined — use ?? '' to guarantee string before join
+  const ini = (player.name||'?').split(' ').map((w:string) => w[0] ?? '').join('').toUpperCase().slice(0,2)
+  // FIX: charCodeAt(0) on player.name which may be undefined — guard with ?? 0
+  const bg  = BG_COLORS[((player.name ?? '').charCodeAt(0) || 0) % BG_COLORS.length]
+  // FIX: player.role may be undefined — use ?? '' fallback before indexing
+  const rc  = ROLE_COLOR[player.role ?? ''] || '#555'
   return (
     <View style={{ width:size, height:size, borderRadius:size/2, overflow:'hidden', borderWidth:2, borderColor:rc, flexShrink:0 }}>
       {player.photoUrl
@@ -158,13 +161,15 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
   const [tab, setTab] = useState<'batting'|'bowling'>('batting')
   const [syncing, setSyncing] = useState(false)
   const d  = derive(player)
-  const rc = ROLE_COLOR[player.role] || '#888'
+  // FIX: player.role may be undefined — use ?? '' fallback before indexing
+  const rc = ROLE_COLOR[player.role ?? ''] || '#888'
 
   const sync = async () => {
     setSyncing(true)
     try {
       const token = await getToken()
-      const res = await fetch(apiUrl(`/api/players/${player._id}/sync`), {
+      // FIX: player._id may be undefined — use ?? '' fallback
+      const res = await fetch(apiUrl(`/api/players/${player._id ?? ''}/sync`), {
         method:'POST', headers:token?{Authorization:`Bearer ${token}`}:{}})
       if (!res.ok) throw new Error()
       const data = await res.json() as Player
@@ -178,8 +183,10 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
       { text:'Cancel', style:'cancel' },
       { text:'Delete', style:'destructive', onPress: async () => {
         const token = await getToken()
-        await fetch(apiUrl(`/api/players/${player._id}`), { method:'DELETE', headers:token?{Authorization:`Bearer ${token}`}:{} })
-        onDeleted(player._id)
+        // FIX: player._id may be undefined — use ?? '' fallback
+        const playerId = player._id ?? ''
+        await fetch(apiUrl(`/api/players/${playerId}`), { method:'DELETE', headers:token?{Authorization:`Bearer ${token}`}:{} })
+        onDeleted(playerId)
       }},
     ])
   }
@@ -232,8 +239,9 @@ function ProfileSheet({ player, onClose, onUpdated, onDeleted }: { player:Player
           <Avatar player={player} size={76} />
           <View style={{ flex:1, marginLeft:16 }}>
             <Text style={ps.heroName}>{player.name}</Text>
-            <View style={[ps.roleBadge, { backgroundColor:rc+'18', borderColor:rc+'33' }]}>
-              <Text style={[ps.roleText, { color:rc }]}>{ROLE_ICON[player.role]} {ROLE_LABEL[player.role]}</Text>
+            {/* FIX: player.role may be undefined — use ?? '' fallback before indexing */}
+            <View style={[ps.roleBadge, { backgroundColor:(ROLE_COLOR[player.role ?? ''] || '#888')+'18', borderColor:(ROLE_COLOR[player.role ?? ''] || '#888')+'33' }]}>
+              <Text style={[ps.roleText, { color:rc }]}>{ROLE_ICON[player.role ?? ''] ?? ''} {ROLE_LABEL[player.role ?? ''] ?? ''}</Text>
             </View>
             {(player.battingStyle||player.bowlingStyle) && (
               <Text style={ps.styleText}>
@@ -310,7 +318,8 @@ function PlayerCard({ player, onPress }: { player:Player; onPress:()=>void }) {
   const d     = derive(player)
   const hasBat  = (player.totalRuns??0) > 0 || (player.totalBallsFaced??0) > 0
   const hasBowl = (player.totalWickets??0) > 0 || (player.totalBallsBowled??0) > 0
-  const rc = ROLE_COLOR[player.role] || '#555'
+  // FIX: player.role may be undefined — use ?? '' fallback before indexing
+  const rc = ROLE_COLOR[player.role ?? ''] || '#555'
   return (
     <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onPress} style={pcStyles.card}>
       <Avatar player={player} size={48} />
@@ -321,7 +330,8 @@ function PlayerCard({ player, onPress }: { player:Player; onPress:()=>void }) {
         </View>
         <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
           <View style={{ paddingHorizontal:8, paddingVertical:2, borderRadius:20, backgroundColor:rc+'15' }}>
-            <Text style={[pcStyles.roleTag, { color:rc }]}>{ROLE_ICON[player.role]} {ROLE_LABEL[player.role]}</Text>
+            {/* FIX: player.role may be undefined — use ?? '' fallback before indexing */}
+            <Text style={[pcStyles.roleTag, { color:rc }]}>{ROLE_ICON[player.role ?? ''] ?? ''} {ROLE_LABEL[player.role ?? ''] ?? ''}</Text>
           </View>
           <Text style={pcStyles.meta}>{player.totalMatches ?? 0}M</Text>
         </View>
@@ -367,7 +377,7 @@ export default function PlayersScreen() {
 
   useEffect(() => { fetchPlayers() }, [fetchPlayers])
 
-  const sortFn = SORT_OPTIONS.find(s => s.key === sortBy)?.fn ?? SORT_OPTIONS[0].fn
+  const sortFn = SORT_OPTIONS.find(s => s.key === sortBy)?.fn ?? SORT_OPTIONS[0]!.fn
   const sorted = players
     .filter(p => roleF === 'all' || p.role === roleF)
     .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
@@ -430,7 +440,8 @@ export default function PlayersScreen() {
       {/* List */}
       <FlatList
         data={sorted}
-        keyExtractor={p => p._id}
+        // FIX: player._id may be undefined — use fallback
+        keyExtractor={p => p._id ?? p.name}
         contentContainerStyle={{ padding:12, paddingBottom:80 }}
         ListHeaderComponent={adding ? <AddForm onCreated={p=>{setPlayers(ps=>[p,...ps]);setAdding(false)}} onCancel={()=>setAdding(false)} /> : null}
         ListEmptyComponent={
@@ -469,7 +480,7 @@ const styles = StyleSheet.create({
   root: { flex:1, backgroundColor:'#0a0a0a' },
   header: { backgroundColor:'#141414', borderBottomWidth:1, borderBottomColor:'rgba(255,255,255,0.06)' },
   headerTop: { flexDirection:'row', alignItems:'center', gap:10, padding:14, paddingTop: Platform.OS==='ios'?50:36 },
-  backBtn: { width:34,height:34,borderRadius:9,backgroundColor:'rgba(255,255,255,0.06)',alignItems:'center',justifyContent:'center' },
+  backBtn: { width:34,height:34,borderRadius:9,backgroundColor:'hsla(0, 0%, 100%, 0.06)',alignItems:'center',justifyContent:'center' },
   backTxt: { color:'#aaa', fontSize:18, fontWeight:'600' },
   title: { flex:1, color:'#f0f0f0', fontWeight:'700', fontSize:20, letterSpacing:0.5 },
   addBtn: { paddingHorizontal:16, paddingVertical:8, borderRadius:10, backgroundColor:'#cc0000' },

@@ -1,29 +1,15 @@
-// src/services/api.ts
+// All data is stored locally. No backend needed.
+// These stubs keep existing screen imports working without changes.
 
-const BASE_URL = "https://crickyworld-server.onrender.com"
+export const API_URL    = ''
+export const apiUrl     = (path: string): string => path
 
-export function apiUrl(path: string) {
-  return `${BASE_URL}${path}`
-}
+export const authHeaders = (token?: string | null): Record<string, string> => ({
+  'Content-Type': 'application/json',
+})
 
-export function authHeaders(token?: string | null) {
-  const headers: any = {}
+export const jsonHeaders = (token?: string | null): Record<string, string> => ({
+  'Content-Type': 'application/json',
+})
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-  }
-
-  return headers
-}
-
-export function jsonHeaders(token?: string | null) {
-  const headers: any = {
-    "Content-Type": "application/json",
-  }
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-  }
-
-  return headers
-}
+export default { apiUrl, authHeaders, jsonHeaders, API_URL }

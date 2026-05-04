@@ -289,10 +289,11 @@ function ScorecardTab({ match }: { match: any }) {
         <View key={i} style={[SC.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.02)' }]}>
           <Text style={[SC.td, { flex: 2, textAlign: 'left', color: p.runs === hs ? T.gold : T.text }]} numberOfLines={1}>{p.name}</Text>
           <Text style={[SC.td, { color: p.runs >= 50 ? T.gold : T.text, fontWeight: '700' }]}>{p.runs}{p.isOut ? '' : '*'}</Text>
-          <Text style={SC.td}>{p.balls}</Text>
-          <Text style={[SC.td, { color: T.accent }]}>{p.fours}</Text>
-          <Text style={[SC.td, { color: T.purple }]}>{p.sixes}</Text>
-          <Text style={SC.td}>{p.balls > 0 ? (p.runs / p.balls * 100).toFixed(0) : '—'}</Text>
+          {/* FIX: p.balls may be undefined — use ?? 0 */}
+          <Text style={SC.td}>{p.balls ?? 0}</Text>
+          <Text style={[SC.td, { color: T.accent }]}>{p.fours ?? 0}</Text>
+          <Text style={[SC.td, { color: T.purple }]}>{p.sixes ?? 0}</Text>
+          <Text style={SC.td}>{(p.balls ?? 0) > 0 ? (p.runs / (p.balls ?? 1) * 100).toFixed(0) : '—'}</Text>
         </View>
       ))}
       <View style={[SC.row, { backgroundColor: T.goldDim + '33', borderTopWidth: 1, borderTopColor: T.gold + '44' }]}>
@@ -306,17 +307,21 @@ function ScorecardTab({ match }: { match: any }) {
           <Text key={h} style={[SC.th, { color: T.purple }, i === 0 && { flex: 2, textAlign: 'left' }]}>{h}</Text>
         ))}
       </View>
-      {(inn.bowlingStats ?? []).map((b: BowlingStats, i: number) => (
-        <View key={i} style={[SC.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.02)' }]}>
-          <Text style={[SC.td, { flex: 2, textAlign: 'left', color: b.wickets >= 3 ? T.purple : T.text2 }]} numberOfLines={1}>{b.name}</Text>
-          <Text style={SC.td}>{fmtOv(b.balls)}</Text>
-          <Text style={SC.td}>{b.runs}</Text>
-          <Text style={[SC.td, { color: b.wickets > 0 ? T.purple : T.muted, fontWeight: '700' }]}>{b.wickets}</Text>
-          <Text style={[SC.td, { color: b.balls > 0 && b.runs / (b.balls / 6) <= 6 ? T.accent : T.text2 }]}>
-            {b.balls > 0 ? (b.runs / (b.balls / 6)).toFixed(2) : '—'}
-          </Text>
-        </View>
-      ))}
+      {(inn.bowlingStats ?? []).map((b: BowlingStats, i: number) => {
+        // FIX: b.balls may be undefined — use ?? 0 throughout this row
+        const bBalls = b.balls ?? 0
+        return (
+          <View key={i} style={[SC.row, i % 2 === 0 && { backgroundColor: 'rgba(255,255,255,0.02)' }]}>
+            <Text style={[SC.td, { flex: 2, textAlign: 'left', color: b.wickets >= 3 ? T.purple : T.text2 }]} numberOfLines={1}>{b.name}</Text>
+            <Text style={SC.td}>{fmtOv(bBalls)}</Text>
+            <Text style={SC.td}>{b.runs ?? 0}</Text>
+            <Text style={[SC.td, { color: b.wickets > 0 ? T.purple : T.muted, fontWeight: '700' }]}>{b.wickets ?? 0}</Text>
+            <Text style={[SC.td, { color: bBalls > 0 && (b.runs ?? 0) / (bBalls / 6) <= 6 ? T.accent : T.text2 }]}>
+              {bBalls > 0 ? ((b.runs ?? 0) / (bBalls / 6)).toFixed(2) : '—'}
+            </Text>
+          </View>
+        )
+      })}
     </ScrollView>
   )
 }
