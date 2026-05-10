@@ -395,15 +395,16 @@ export default function ManagePlayersScreen() {
 
   useEffect(() => { load() }, [])
 
-  const load = async () => {
-    setLoading(true); setFetchError('')
-    try {
-      const token = await getToken()
-      const res   = await fetch(apiUrl('/api/players'), { headers: authHeaders(token) })
-      setPlayers(await res.json() as Player[])
-    } catch { setFetchError('Failed to load players') }
-    finally  { setLoading(false) }
-  }
+ const load = async () => {
+  setLoading(true); setFetchError('')
+  try {
+    const token = await getToken()
+    const res = await fetch(apiUrl('/api/players'), { headers: authHeaders(token) })
+    const data = await res.json()
+    setPlayers(Array.isArray(data) ? data : [])
+  } catch { setFetchError('Failed to load players') }
+  finally { setLoading(false) }
+}
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
@@ -417,7 +418,7 @@ export default function ManagePlayersScreen() {
     finally  { setDeleting(null) }
   }
 
-  const visible = players.filter(p => {
+  const visible = (players || []).filter(p => {
     const ms = !search || p.name.toLowerCase().includes(search.toLowerCase())
     const mr = roleFilter === 'all' || p.role === roleFilter
     return ms && mr
