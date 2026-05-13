@@ -20,6 +20,15 @@ import type { RootStackParamList, Ball, BattingStats, BowlingStats } from '../ty
 type Route = RouteProp<RootStackParamList, 'Scoring'>
 type Nav   = NativeStackNavigationProp<RootStackParamList>
 
+// ── Player info type ──────────────────────────────────────────────────────────
+type PlayerInfo = {
+  name: string
+  role?: string
+  jerseyNumber?: string | number
+  battingStyle?: string
+  bowlingStyle?: string
+}
+
 // ── Theme ─────────────────────────────────────────────────────────────────────
 const T = {
   bg: '#0b0f1a', surface: '#111827', card: '#151e2e', card2: '#1a2540',
@@ -31,6 +40,16 @@ const T = {
   sky: '#38bdf8', purple: '#c084fc', purpleDim: '#3b0764',
   text: '#f1f5f9', text2: '#cbd5e1', subtext: '#94a3b8', muted: '#475569',
   faint: '#1e293b'}
+
+// ── Role display helpers ──────────────────────────────────────────────────────
+const ROLE_COLOR: Record<string, string> = {
+  batsman: '#60a5fa', bowler: '#f87171',
+  allrounder: '#facc15', 'wk-batsman': '#a78bfa',
+}
+const ROLE_LABEL: Record<string, string> = {
+  batsman: 'BAT', bowler: 'BOWL',
+  allrounder: 'ALL', 'wk-batsman': 'WK',
+}
 
 const fmtOv  = (balls: number) => `${Math.floor(balls / 6)}.${balls % 6}`
 const calcCRR = (runs: number, balls: number) => balls === 0 ? '0.0' : (runs / (balls / 6)).toFixed(1)
@@ -59,55 +78,150 @@ function BallDot({ ball, size = 30 }: { ball: Ball; size?: number }) {
   )
 }
 
-// ── Player Picker Modal ───────────────────────────────────────────────────────
+// ── Enhanced Player Picker Modal ──────────────────────────────────────────────
 function PlayerPicker({
-  visible, onClose, onSelect, title, accentColor = T.sky, players = []}: {
-  visible: boolean; onClose: () => void; onSelect: (name: string) => void
-  title: string; accentColor?: string; players: string[]
+  visible, onClose, onSelect, title, accentColor = T.sky,
+  players = [], allPlayerInfo = [],
+}: {
+  visible: boolean
+  onClose: () => void
+  onSelect: (name: string) => void
+  title: string
+  accentColor?: string
+  players: string[]
+  allPlayerInfo?: PlayerInfo[]
 }) {
   const [query, setQuery] = useState('')
   useEffect(() => { if (visible) setQuery('') }, [visible])
 
-  const filtered  = players.filter(n => n.toLowerCase().includes(query.toLowerCase()))
-  const canAddNew = query.trim() !== '' && !players.some(n => n.toLowerCase() === query.trim().toLowerCase())
+  const filtered = players.filter(n =>
+    n.toLowerCase().includes(query.toLowerCase())
+  )
+  const canAddNew = query.trim() !== '' &&
+    !players.some(n => n.toLowerCase() === query.trim().toLowerCase())
+
+  const getInfo = (name: string): PlayerInfo | undefined =>
+    allPlayerInfo.find(p => p.name.toLowerCase() === name.toLowerCase())
+
+  const listData = canAddNew
+    ? [{ name: query.trim(), isNew: true }, ...filtered.map(n => ({ name: n, isNew: false }))]
+    : filtered.map(n => ({ name: n, isNew: false }))
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={PP.backdrop}><Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} style={{ flex: 1 }} onPress={onClose} /></View>
+      <View style={PP.backdrop}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+      </View>
       <View style={PP.sheet}>
         <View style={PP.handle} />
         <Text style={[PP.title, { color: accentColor }]}>{title}</Text>
 
+        {/* Search input */}
         <View style={PP.inputRow}>
-          <TextInput style={[PP.input, { borderColor: accentColor + '55' }]}
-            value={query} onChangeText={setQuery}
-            placeholder="Search or type new name…" placeholderTextColor={T.muted}
-            autoFocus returnKeyType="done" onSubmitEditing={() => query.trim() && onSelect(query.trim())} />
+          <View style={[PP.inputWrap, { borderColor: accentColor + '55' }]}>
+            <Text style={{ color: accentColor, fontSize: 14, marginRight: 6 }}>🔍</Text>
+            <TextInput
+              style={PP.input}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search by name…"
+              placeholderTextColor={T.muted}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => query.trim() && onSelect(query.trim())}
+            />
+            {query !== '' ? (
+              <Pressable onPress={() => setQuery('')}>
+                <Text style={{ color: T.muted, fontSize: 14 }}>✕</Text>
+              </Pressable>
+            ) : null}
+          </View>
           {query.trim() !== '' ? (
-            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onSelect(query.trim())}
-              style={[PP.setBtn, { backgroundColor: accentColor + '22', borderColor: accentColor + '55' }]}>
+            <Pressable
+              onPress={() => onSelect(query.trim())}
+              style={[PP.setBtn, { backgroundColor: accentColor + '22', borderColor: accentColor + '55' }]}
+            >
               <Text style={{ color: accentColor, fontWeight: '800', fontSize: 13 }}>Set</Text>
             </Pressable>
           ) : null}
         </View>
 
+        {/* Player list */}
         <FlatList
-          data={canAddNew ? [{ name: query.trim(), isNew: true }, ...filtered.map(n => ({ name: n, isNew: false }))]
-                          : filtered.map(n => ({ name: n, isNew: false }))}
+          data={listData}
           keyExtractor={(item, i) => item.name + i}
-          style={{ maxHeight: 280 }}
-          renderItem={({ item }) => (
-            <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onSelect(item.name)}
-              style={[PP.playerRow, item.isNew && { backgroundColor: accentColor + '12', borderColor: accentColor + '44' }]}>
-              <Text style={[PP.playerName, item.isNew && { color: accentColor }]}>
-                {item.isNew ? `＋ Add "${item.name}"` : item.name}
+          style={{ maxHeight: 320 }}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => {
+            if (item.isNew) {
+              return (
+                <Pressable
+                  android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+                  onPress={() => onSelect(item.name)}
+                  style={[PP.playerRow, { backgroundColor: accentColor + '12', borderColor: accentColor + '44' }]}
+                >
+                  <Text style={{ color: accentColor, fontWeight: '800', fontSize: 14 }}>
+                    ＋ Add "{item.name}"
+                  </Text>
+                </Pressable>
+              )
+            }
+
+            const info = getInfo(item.name)
+            const roleColor = info?.role ? (ROLE_COLOR[info.role] ?? T.muted) : T.muted
+            const roleLabel = info?.role ? (ROLE_LABEL[info.role] ?? null) : null
+            const initials  = item.name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+
+            return (
+              <Pressable
+                android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
+                onPress={() => onSelect(item.name)}
+                style={PP.playerRow}
+              >
+                {/* Initials avatar */}
+                <View style={[PP.avatar, { backgroundColor: roleColor + '22', borderColor: roleColor + '55' }]}>
+                  <Text style={{ color: roleColor, fontSize: 12, fontWeight: '800' }}>{initials}</Text>
+                </View>
+
+                {/* Name + style */}
+                <View style={{ flex: 1 }}>
+                  <Text style={PP.playerName}>{item.name}</Text>
+                  {info?.battingStyle || info?.bowlingStyle ? (
+                    <Text style={PP.playerSub} numberOfLines={1}>
+                      {[info.battingStyle, info.bowlingStyle].filter(Boolean).join('  ·  ')}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Role badge + jersey */}
+                <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                  {roleLabel ? (
+                    <View style={[PP.roleBadge, { backgroundColor: roleColor + '18', borderColor: roleColor + '44' }]}>
+                      <Text style={{ color: roleColor, fontSize: 9, fontWeight: '800' }}>{roleLabel}</Text>
+                    </View>
+                  ) : null}
+                  {info?.jerseyNumber ? (
+                    <Text style={PP.jersey}>#{info.jerseyNumber}</Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            )
+          }}
+          ListEmptyComponent={
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 28, marginBottom: 8 }}>🔍</Text>
+              <Text style={{ color: T.muted, fontSize: 13, textAlign: 'center' }}>
+                No players found.{'\n'}Type a name above to add.
               </Text>
-            </Pressable>
-          )}
-          ListEmptyComponent={<Text style={PP.empty}>No players found. Type a name above.</Text>}
+            </View>
+          }
         />
 
-        <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={onClose} style={PP.cancelBtn}>
+        <Pressable
+          android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
+          onPress={onClose}
+          style={PP.cancelBtn}
+        >
           <Text style={{ color: T.subtext, fontWeight: '700', fontSize: 13 }}>Cancel</Text>
         </Pressable>
       </View>
@@ -116,17 +230,22 @@ function PlayerPicker({
 }
 
 const PP = StyleSheet.create({
-  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: T.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 36, borderWidth: 1, borderColor: T.border, maxHeight: '72%' },
-  handle: { width: 36, height: 4, backgroundColor: T.muted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
-  inputRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  input: { flex: 1, backgroundColor: T.surface, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 13, paddingVertical: 10, color: T.text, fontSize: 14 },
-  setBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center' },
-  playerRow: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
+  backdrop:   { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' },
+  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: T.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 36, borderWidth: 1, borderColor: T.border, maxHeight: '80%' },
+  handle:     { width: 36, height: 4, backgroundColor: T.muted, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  title:      { fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
+  inputRow:   { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  inputWrap:  { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: T.surface, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  input:      { flex: 1, color: T.text, fontSize: 14 },
+  setBtn:     { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, justifyContent: 'center' },
+  playerRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
+  avatar:     { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   playerName: { color: T.text, fontWeight: '700', fontSize: 14 },
-  empty: { color: T.muted, fontSize: 12, textAlign: 'center', padding: 20 },
-  cancelBtn: { marginTop: 14, padding: 11, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' }})
+  playerSub:  { color: T.muted, fontSize: 11, marginTop: 1 },
+  roleBadge:  { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, borderWidth: 1 },
+  jersey:     { color: T.muted, fontSize: 10, fontFamily: 'monospace' },
+  cancelBtn:  { marginTop: 12, padding: 11, borderRadius: 10, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' },
+})
 
 // ── New Batsman Modal ─────────────────────────────────────────────────────────
 function NewBatsmanModal({ visible, outName, wicketType, players, onConfirm }: {
@@ -151,7 +270,7 @@ function NewBatsmanModal({ visible, outName, wicketType, players, onConfirm }: {
             placeholder="Search or type name…" placeholderTextColor={T.muted}
             autoFocus returnKeyType="done" onSubmitEditing={() => query.trim() && onConfirm(query.trim())} />
 
-          <ScrollView style={{ maxHeight: 220 }}>
+          <ScrollView style={{ maxHeight: 220 }} keyboardShouldPersistTaps="handled">
             {canAddNew ? (
               <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={[NB.row, { backgroundColor: 'rgba(255,68,68,0.1)', borderColor: 'rgba(255,68,68,0.3)' }]}>
                 <Text style={{ color: T.red, fontWeight: '700', fontSize: 13 }}>＋ Add "{query.trim()}"</Text>
@@ -176,14 +295,15 @@ function NewBatsmanModal({ visible, outName, wicketType, players, onConfirm }: {
 }
 
 const NB = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  box: { width: '100%', maxWidth: 360, backgroundColor: T.surface, borderRadius: 20, padding: 24, paddingBottom: 20, borderWidth: 1, borderColor: 'rgba(255,68,68,0.3)', maxHeight: '80%' },
-  title: { color: T.red, fontSize: 22, fontWeight: '700', textAlign: 'center', letterSpacing: 1, marginBottom: 4 },
-  sub: { color: T.subtext, fontSize: 13, textAlign: 'center', marginBottom: 4 },
-  sub2: { color: T.text2, fontSize: 12, textAlign: 'center', marginBottom: 16 },
-  input: { backgroundColor: T.surface, borderWidth: 1.5, borderColor: 'rgba(255,68,68,0.35)', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, color: T.text, fontSize: 14, marginBottom: 10 },
-  row: { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
-  confirmBtn: { backgroundColor: T.accent, borderRadius: 11, padding: 13, alignItems: 'center', marginTop: 8 }})
+  overlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  box:        { width: '100%', maxWidth: 360, backgroundColor: T.surface, borderRadius: 20, padding: 24, paddingBottom: 20, borderWidth: 1, borderColor: 'rgba(255,68,68,0.3)', maxHeight: '80%' },
+  title:      { color: T.red, fontSize: 22, fontWeight: '700', textAlign: 'center', letterSpacing: 1, marginBottom: 4 },
+  sub:        { color: T.subtext, fontSize: 13, textAlign: 'center', marginBottom: 4 },
+  sub2:       { color: T.text2, fontSize: 12, textAlign: 'center', marginBottom: 16 },
+  input:      { backgroundColor: T.surface, borderWidth: 1.5, borderColor: 'rgba(255,68,68,0.35)', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, color: T.text, fontSize: 14, marginBottom: 10 },
+  row:        { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
+  confirmBtn: { backgroundColor: T.accent, borderRadius: 11, padding: 13, alignItems: 'center', marginTop: 8 },
+})
 
 // ── Bowler Change Modal ────────────────────────────────────────────────────────
 function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: {
@@ -208,7 +328,7 @@ function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: 
           placeholder="Search or type bowler name…" placeholderTextColor={T.muted}
           autoFocus returnKeyType="done" onSubmitEditing={() => query.trim() && onConfirm(query.trim())} />
 
-        <ScrollView style={{ maxHeight: 200 }}>
+        <ScrollView style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
           {canAddNew ? (
             <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} onPress={() => onConfirm(query.trim())} style={[BC.row, { backgroundColor: 'rgba(251,146,60,0.1)', borderColor: 'rgba(251,146,60,0.3)' }]}>
               <Text style={{ color: T.orange, fontWeight: '700', fontSize: 13 }}>＋ Add "{query.trim()}"</Text>
@@ -242,16 +362,17 @@ function BowlerChangeModal({ visible, players, lastBowler, onConfirm, onSkip }: 
 }
 
 const BC = StyleSheet.create({
-  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' },
-  sheet: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: T.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, paddingBottom: 36, borderWidth: 1, borderColor: 'rgba(251,146,60,0.3)' },
-  handle: { width: 36, height: 4, backgroundColor: T.muted, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  title: { color: T.orange, fontSize: 20, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
-  sub: { color: T.subtext, fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 14 },
-  input: { backgroundColor: T.surface, borderWidth: 1.5, borderColor: 'rgba(251,146,60,0.35)', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, color: T.text, fontSize: 14, marginBottom: 10 },
-  row: { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
-  empty: { color: T.muted, fontSize: 12, textAlign: 'center', padding: 16 },
-  skipBtn: { flex: 1, padding: 12, borderRadius: 11, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' },
-  confirmBtn: { flex: 2, padding: 12, borderRadius: 11, backgroundColor: T.orange, alignItems: 'center' }})
+  overlay:    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' },
+  sheet:      { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: T.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, paddingBottom: 36, borderWidth: 1, borderColor: 'rgba(251,146,60,0.3)' },
+  handle:     { width: 36, height: 4, backgroundColor: T.muted, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
+  title:      { color: T.orange, fontSize: 20, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
+  sub:        { color: T.subtext, fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 14 },
+  input:      { backgroundColor: T.surface, borderWidth: 1.5, borderColor: 'rgba(251,146,60,0.35)', borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, color: T.text, fontSize: 14, marginBottom: 10 },
+  row:        { paddingVertical: 11, paddingHorizontal: 13, borderRadius: 9, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, marginBottom: 6 },
+  empty:      { color: T.muted, fontSize: 12, textAlign: 'center', padding: 16 },
+  skipBtn:    { flex: 1, padding: 12, borderRadius: 11, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border, alignItems: 'center' },
+  confirmBtn: { flex: 2, padding: 12, borderRadius: 11, backgroundColor: T.orange, alignItems: 'center' },
+})
 
 // ── Scorecard Tab ─────────────────────────────────────────────────────────────
 function ScorecardTab({ match }: { match: any }) {
@@ -261,7 +382,6 @@ function ScorecardTab({ match }: { match: any }) {
 
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Innings switcher */}
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: T.border }}>
         {(['innings1', 'innings2'] as const).map(k => (
           <Pressable android_ripple={{ color: "rgba(255,255,255,0.12)" }} key={k} onPress={() => setActiveInn(k)}
@@ -273,13 +393,11 @@ function ScorecardTab({ match }: { match: any }) {
         ))}
       </View>
 
-      {/* Score */}
       <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: T.border }}>
         <Text style={SC.scoreText}>{inn.runs}/{inn.wickets}</Text>
         <Text style={SC.oversText}>({fmtOv(inn.balls)} ov)</Text>
       </View>
 
-      {/* Batting */}
       <View style={SC.tableHeader}>
         {['BATTER','R','B','4s','6s','SR'].map((h, i) => (
           <Text key={h} style={[SC.th, i === 0 && { flex: 2, textAlign: 'left' }]}>{h}</Text>
@@ -300,7 +418,6 @@ function ScorecardTab({ match }: { match: any }) {
         <Text style={[SC.td, { flex: 3, textAlign: 'right', color: T.gold, fontWeight: '800', fontSize: 14 }]}>{inn.runs}/{inn.wickets} ({fmtOv(inn.balls)})</Text>
       </View>
 
-      {/* Bowling */}
       <View style={[SC.tableHeader, { backgroundColor: '#181c28', marginTop: 4 }]}>
         {['BOWLER','O','R','W','ECO'].map((h, i) => (
           <Text key={h} style={[SC.th, { color: T.purple }, i === 0 && { flex: 2, textAlign: 'left' }]}>{h}</Text>
@@ -322,14 +439,15 @@ function ScorecardTab({ match }: { match: any }) {
 }
 
 const SC = StyleSheet.create({
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabTxt: { color: T.muted, fontWeight: '700', fontSize: 13 },
-  scoreText: { fontSize: 36, fontWeight: '700', color: T.text, fontVariant: ['tabular-nums'] },
-  oversText: { fontSize: 12, color: T.subtext },
-  tableHeader: { flexDirection: 'row', backgroundColor: T.card, paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: T.border },
-  th: { flex: 1, textAlign: 'right', fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 0.8 },
-  row: { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
-  td: { flex: 1, textAlign: 'right', fontSize: 12, color: T.text2, fontVariant: ['tabular-nums'] }})
+  tab:        { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabTxt:     { color: T.muted, fontWeight: '700', fontSize: 13 },
+  scoreText:  { fontSize: 36, fontWeight: '700', color: T.text, fontVariant: ['tabular-nums'] },
+  oversText:  { fontSize: 12, color: T.subtext },
+  tableHeader:{ flexDirection: 'row', backgroundColor: T.card, paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: T.border },
+  th:         { flex: 1, textAlign: 'right', fontSize: 10, color: T.gold, fontWeight: '800', letterSpacing: 0.8 },
+  row:        { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
+  td:         { flex: 1, textAlign: 'right', fontSize: 12, color: T.text2, fontVariant: ['tabular-nums'] },
+})
 
 // ── Ball by Ball Tab ───────────────────────────────────────────────────────────
 function BallByBallTab({ match }: { match: any }) {
@@ -344,7 +462,6 @@ function BallByBallTab({ match }: { match: any }) {
     </View>
   )
 
-  // Group by over
   const overs: Ball[][] = []
   let legal = 0
   ;(current.ballByBall as Ball[]).forEach((b: Ball) => {
@@ -417,12 +534,13 @@ export default function ScoringScreen() {
   const navigation = useNavigation<Nav>()
   const { id }     = route.params
 
-  const [match,    setMatch]    = useState<any>(null)
-  const [tab,      setTab]      = useState<'scoring' | 'scorecard' | 'ballbyball'>('scoring')
-  const [loading,  setLoading]  = useState(false)
-  const [fetching, setFetching] = useState(true)
-  const [error,    setError]    = useState('')
-  const [allPlayers, setAllPlayers] = useState<string[]>([])
+  const [match,      setMatch]      = useState<any>(null)
+  const [tab,        setTab]        = useState<'scoring' | 'scorecard' | 'ballbyball'>('scoring')
+  const [loading,    setLoading]    = useState(false)
+  const [fetching,   setFetching]   = useState(true)
+  const [error,      setError]      = useState('')
+  // ✅ store full player objects for rich picker display
+  const [allPlayers, setAllPlayers] = useState<PlayerInfo[]>([])
 
   // Scoring state
   const [striker,      setStriker]      = useState('')
@@ -457,14 +575,14 @@ export default function ScoringScreen() {
 
   useEffect(() => { fetchMatch() }, [fetchMatch])
 
-  // Load players for picker
+  // ✅ Load full player objects for rich picker
   useEffect(() => {
     const load = async () => {
       const token = await getToken()
       const res = await fetch(apiUrl('/api/players'), { headers: authHeaders(token) })
       if (res.ok) {
-        const data = await res.json() as { name: string }[]
-        setAllPlayers(data.map(p => p.name))
+        const data = await res.json() as PlayerInfo[]
+        setAllPlayers(data)
       }
     }
     load().catch(() => {})
@@ -505,13 +623,23 @@ export default function ScoringScreen() {
 
   const battingTeamPlayers = innings.battingTeam === match.team1 ? match.team1Players : match.team2Players
   const bowlingTeamPlayers = innings.battingTeam === match.team1 ? match.team2Players : match.team1Players
-  const knownBatters = [...new Set([...(battingTeamPlayers ?? []), ...(innings.battingStats?.map((p: any) => p.name) ?? []), ...allPlayers])].filter(Boolean) as string[]
-  const knownBowlers = [...new Set([...(bowlingTeamPlayers ?? []), ...(innings.bowlingStats?.map((p: any) => p.name) ?? []), ...allPlayers])].filter(Boolean) as string[]
+
+  // ✅ extract names from full player objects
+  const allPlayerNames = allPlayers.map(p => p.name)
+  const knownBatters = [...new Set([
+    ...(battingTeamPlayers ?? []),
+    ...(innings.battingStats?.map((p: any) => p.name) ?? []),
+    ...allPlayerNames,
+  ])].filter(Boolean) as string[]
+  const knownBowlers = [...new Set([
+    ...(bowlingTeamPlayers ?? []),
+    ...(innings.bowlingStats?.map((p: any) => p.name) ?? []),
+    ...allPlayerNames,
+  ])].filter(Boolean) as string[]
   const existingBowlers = (innings.bowlingStats?.map((p: any) => p.name) ?? []) as string[]
 
   const legalBalls   = (innings.ballByBall ?? []).filter((b: Ball) => !b.isWide && !b.isNoBall)
   const overBallNum  = legalBalls.length % 6
-  // Build current over balls
   let thisBalls: Ball[] = []
   let lc = 0
   for (let i = (innings.ballByBall ?? []).length - 1; i >= 0; i--) {
@@ -666,7 +794,6 @@ export default function ScoringScreen() {
 
             {/* Batter/Bowler card */}
             <View style={S.playerCard}>
-              {/* Headers */}
               <View style={S.playerCardHeader}>
                 <Text style={[S.colHdr, { flex: 1, textAlign: 'left' }]}>BATTER</Text>
                 {['R','B','SR'].map(h => <Text key={h} style={S.colHdr}>{h}</Text>)}
@@ -834,22 +961,39 @@ export default function ScoringScreen() {
       </View>
 
       {/* ── MODALS ── */}
-      <PlayerPicker visible={picker === 'striker'} onClose={() => setPicker(null)}
-        onSelect={n => { setStriker(n); setPicker(null) }} title="SET STRIKER" accentColor={T.accent} players={knownBatters} />
-      <PlayerPicker visible={picker === 'nonStriker'} onClose={() => setPicker(null)}
-        onSelect={n => { setNonStriker(n); setPicker(null) }} title="SET NON-STRIKER" accentColor={T.sky} players={knownBatters} />
-      <PlayerPicker visible={picker === 'bowler'} onClose={() => setPicker(null)}
-        onSelect={n => { setBowlerName(n); setPicker(null) }} title="SET BOWLER" accentColor={T.orange} players={knownBowlers} />
+      {/* ✅ all 3 pickers now pass allPlayerInfo for rich display */}
+      <PlayerPicker
+        visible={picker === 'striker'} onClose={() => setPicker(null)}
+        onSelect={n => { setStriker(n); setPicker(null) }}
+        title="SET STRIKER" accentColor={T.accent}
+        players={knownBatters} allPlayerInfo={allPlayers}
+      />
+      <PlayerPicker
+        visible={picker === 'nonStriker'} onClose={() => setPicker(null)}
+        onSelect={n => { setNonStriker(n); setPicker(null) }}
+        title="SET NON-STRIKER" accentColor={T.sky}
+        players={knownBatters} allPlayerInfo={allPlayers}
+      />
+      <PlayerPicker
+        visible={picker === 'bowler'} onClose={() => setPicker(null)}
+        onSelect={n => { setBowlerName(n); setPicker(null) }}
+        title="SET BOWLER" accentColor={T.orange}
+        players={knownBowlers} allPlayerInfo={allPlayers}
+      />
 
-      <NewBatsmanModal visible={newBatsmanOpen} outName={striker} wicketType={pendingBall?.wicketType}
+      <NewBatsmanModal
+        visible={newBatsmanOpen} outName={striker} wicketType={pendingBall?.wicketType}
         players={knownBatters.filter(n => n !== striker && n !== nonStriker)}
-        onConfirm={name => { setNewBatsmanOpen(false); submitBall(pendingBall, name); setPendingBall(null) }} />
+        onConfirm={name => { setNewBatsmanOpen(false); submitBall(pendingBall, name); setPendingBall(null) }}
+      />
 
-      <BowlerChangeModal visible={overChangeOpen}
+      <BowlerChangeModal
+        visible={overChangeOpen}
         players={existingBowlers.length > 0 ? existingBowlers : knownBowlers}
         lastBowler={bowlerName}
         onConfirm={name => { setBowlerName(name); setOverChangeOpen(false) }}
-        onSkip={() => setOverChangeOpen(false)} />
+        onSkip={() => setOverChangeOpen(false)}
+      />
     </View>
   )
 }
@@ -858,60 +1002,52 @@ export default function ScoringScreen() {
 const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: T.bg },
 
-  // Header
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 50 : 36, paddingBottom: 12, backgroundColor: T.card, borderBottomWidth: 1, borderBottomColor: T.border },
-  backBtn: { width: 34, height: 34, borderRadius: 9, backgroundColor: T.border, alignItems: 'center', justifyContent: 'center' },
+  header:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 50 : 36, paddingBottom: 12, backgroundColor: T.card, borderBottomWidth: 1, borderBottomColor: T.border },
+  backBtn:     { width: 34, height: 34, borderRadius: 9, backgroundColor: T.border, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: T.text, fontWeight: '700', fontSize: 16, letterSpacing: 0.5 },
-  headerSub: { color: T.subtext, fontSize: 10, fontWeight: '700' },
-  undoBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border },
-  undoBtnTxt: { color: T.text2, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
+  headerSub:   { color: T.subtext, fontSize: 10, fontWeight: '700' },
+  undoBtn:     { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: T.border2, borderWidth: 1, borderColor: T.border },
+  undoBtnTxt:  { color: T.text2, fontWeight: '700', fontSize: 13, letterSpacing: 1 },
 
-  // Score card
-  scoreCard: { margin: 10, marginBottom: 0, backgroundColor: '#0f1929', borderWidth: 1, borderColor: T.border, borderRadius: 14, padding: 12 },
-  scoreSub: { fontSize: 11, color: T.subtext, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
-  scoreMain: { fontSize: 38, fontWeight: '700', color: T.text, lineHeight: 40, fontVariant: ['tabular-nums'] },
-  scoreWkt: { fontSize: 24, color: T.subtext, fontVariant: ['tabular-nums'] },
-  scoreOv: { fontSize: 11, color: T.subtext, marginTop: 3 },
-  rateLabel: { fontSize: 10, color: T.red, fontWeight: '800', letterSpacing: 1, textAlign: 'right' },
-  rateVal: { fontSize: 26, fontWeight: '700', color: T.text, textAlign: 'right', fontVariant: ['tabular-nums'] },
+  scoreCard:  { margin: 10, marginBottom: 0, backgroundColor: '#0f1929', borderWidth: 1, borderColor: T.border, borderRadius: 14, padding: 12 },
+  scoreSub:   { fontSize: 11, color: T.subtext, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
+  scoreMain:  { fontSize: 38, fontWeight: '700', color: T.text, lineHeight: 40, fontVariant: ['tabular-nums'] },
+  scoreWkt:   { fontSize: 24, color: T.subtext, fontVariant: ['tabular-nums'] },
+  scoreOv:    { fontSize: 11, color: T.subtext, marginTop: 3 },
+  rateLabel:  { fontSize: 10, color: T.red, fontWeight: '800', letterSpacing: 1, textAlign: 'right' },
+  rateVal:    { fontSize: 26, fontWeight: '700', color: T.text, textAlign: 'right', fontVariant: ['tabular-nums'] },
 
-  // Player card
-  playerCard: { marginHorizontal: 12, marginTop: 8, backgroundColor: T.card, borderWidth: 1, borderColor: T.border, borderRadius: 12, overflow: 'hidden' },
+  playerCard:       { marginHorizontal: 12, marginTop: 8, backgroundColor: T.card, borderWidth: 1, borderColor: T.border, borderRadius: 12, overflow: 'hidden' },
   playerCardHeader: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 4, backgroundColor: T.border2, borderBottomWidth: 1, borderBottomColor: T.border2 },
-  colHdr: { width: 44, textAlign: 'center', fontSize: 10, color: T.muted, fontWeight: '800' },
-  playerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.border2 },
-  playerName: { color: T.text, fontWeight: '800', fontSize: 14, flex: 1 },
-  statCell: { width: 44, textAlign: 'center', fontSize: 13, color: T.subtext, fontVariant: ['tabular-nums'] },
+  colHdr:           { width: 44, textAlign: 'center', fontSize: 10, color: T.muted, fontWeight: '800' },
+  playerRow:        { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: T.border2 },
+  playerName:       { color: T.text, fontWeight: '800', fontSize: 14, flex: 1 },
+  statCell:         { width: 44, textAlign: 'center', fontSize: 13, color: T.subtext, fontVariant: ['tabular-nums'] },
 
-  // Over card
   overCard: { marginHorizontal: 12, marginTop: 8, backgroundColor: T.card, borderWidth: 1, borderColor: T.border2, borderRadius: 12, padding: 10, paddingHorizontal: 14 },
 
-  // Extras
-  extrasRow: { flexDirection: 'row', marginHorizontal: 12, marginTop: 8, backgroundColor: T.card, borderWidth: 1, borderColor: T.border2, borderRadius: 12, overflow: 'hidden', justifyContent: 'space-around' },
-  extraBtn: { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 5, padding: 10 },
+  extrasRow:  { flexDirection: 'row', marginHorizontal: 12, marginTop: 8, backgroundColor: T.card, borderWidth: 1, borderColor: T.border2, borderRadius: 12, overflow: 'hidden', justifyContent: 'space-around' },
+  extraBtn:   { flex: 1, flexDirection: 'column', alignItems: 'center', gap: 5, padding: 10 },
   extraCheck: { width: 24, height: 24, borderRadius: 7, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   extraLabel: { fontSize: 11, fontWeight: '800' },
 
-  // Run buttons
-  runRow: { flexDirection: 'row', gap: 6, marginHorizontal: 12, marginTop: 8 },
-  runBtn: { flex: 1, height: 46, borderRadius: 12, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center' },
+  runRow:    { flexDirection: 'row', gap: 6, marginHorizontal: 12, marginTop: 8 },
+  runBtn:    { flex: 1, height: 46, borderRadius: 12, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center' },
   runBtnTxt: { fontSize: 18, fontWeight: '700', fontVariant: ['tabular-nums'] },
 
-  // Wicket
-  wicketBtn: { width: 82, borderRadius: 11, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 2 },
-  wicketBtnTxt: { color: T.subtext, fontSize: 13, fontWeight: '700' },
+  wicketBtn:     { width: 82, borderRadius: 11, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 2 },
+  wicketBtnTxt:  { color: T.subtext, fontSize: 13, fontWeight: '700' },
   wicketTypeBtn: { flex: 1, minHeight: 58, borderRadius: 11, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
-  okBtn: { width: 64, borderRadius: 11, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center' },
-  okBtnTxt: { fontSize: 20, fontWeight: '800' },
-  wktDropdown: { marginHorizontal: 12, marginTop: 4, backgroundColor: T.surface, borderWidth: 1, borderColor: 'rgba(255,68,68,0.3)', borderRadius: 12, overflow: 'hidden', zIndex: 300 },
-  wktItem: { paddingVertical: 11, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: T.border2 },
+  okBtn:         { width: 64, borderRadius: 11, backgroundColor: T.card, borderWidth: 2, borderColor: T.muted, alignItems: 'center', justifyContent: 'center' },
+  okBtnTxt:      { fontSize: 20, fontWeight: '800' },
+  wktDropdown:   { marginHorizontal: 12, marginTop: 4, backgroundColor: T.surface, borderWidth: 1, borderColor: 'rgba(255,68,68,0.3)', borderRadius: 12, overflow: 'hidden', zIndex: 300 },
+  wktItem:       { paddingVertical: 11, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: T.border2 },
 
-  // Action buttons
-  actionBtn: { flex: 1, height: 40, borderRadius: 10, backgroundColor: T.card, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center' },
+  actionBtn:    { flex: 1, height: 40, borderRadius: 10, backgroundColor: T.card, borderWidth: 1, borderColor: T.border, alignItems: 'center', justifyContent: 'center' },
   actionBtnTxt: { color: T.subtext, fontWeight: '800', fontSize: 11, letterSpacing: 0.3 },
 
-  // Bottom tabs
-  bottomTabs: { flexDirection: 'row', backgroundColor: T.card, borderTopWidth: 1, borderTopColor: T.border },
-  bottomTab: { flex: 1, paddingVertical: 12, alignItems: 'center', gap: 3, position: 'relative' },
+  bottomTabs:         { flexDirection: 'row', backgroundColor: T.card, borderTopWidth: 1, borderTopColor: T.border },
+  bottomTab:          { flex: 1, paddingVertical: 12, alignItems: 'center', gap: 3, position: 'relative' },
   bottomTabIndicator: { position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, backgroundColor: T.accent, borderBottomLeftRadius: 2, borderBottomRightRadius: 2 },
-  bottomTabLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: T.muted }})
+  bottomTabLabel:     { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: T.muted },
+})

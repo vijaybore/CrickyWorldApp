@@ -1,29 +1,29 @@
-// src/services/api.ts
+  // src/services/api.ts
 
-const BASE_URL = "https://crickyworld-server.onrender.com"
+  const BASE_URL = "https://crickyworld-server.onrender.com"
 
-export function apiUrl(path: string) {
-  return `${BASE_URL}${path}`
-}
-
-export function authHeaders(token?: string | null) {
-  const headers: any = {}
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
+  export function apiUrl(path: string) {
+    return `${BASE_URL}${path}`
   }
 
-  return headers
-}
+  export function authHeaders(token?: string | null) {
+    const headers: any = {}
 
-export function jsonHeaders(token?: string | null) {
-  const headers: any = {
-    "Content-Type": "application/json",
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+
+    return headers
   }
 
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`
-  }
+  export function jsonHeaders(token?: string | null) {
+    const headers: any = {
+      "Content-Type": "application/json",
+    }
 
-  return headers
-}
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
+
+    return headers
+  }
